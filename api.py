@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
 
-from core.device_manager import DeviceManager
+from core.device_manager import DeviceManager, DEVICE_TYPE_MAPPING
 from core.rule_engine import RulesEngine
 from core.mqtt_client import MQTT_Client 
 import config
@@ -53,6 +53,12 @@ class RuleModel(BaseModel):
     trigger: dict
     action: dict
 
+class DeviceRegistrationModel(BaseModel):
+    id: str
+    name: str
+    type: str
+    topic: str
+
 @app.get("/devices", summary="Pobiera listę urządzeń i ich aktualny stan")
 def list_devices():
     """
@@ -61,6 +67,29 @@ def list_devices():
     if(not device_manager_instance):
          raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (DM).")
     return {"devices": device_manager_instance.get_devices_data()}
+
+@app.post("/devices", summary="Dodaje nowe urządzenie do systemu")
+def add_device(device: DeviceRegistrationModel):
+    """
+    Dodaje nowe urządzenie.
+    """
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany.")
+    
+    if(device.type not in DEVICE_TYPE_MAPPING):
+        raise HTTPException(status_code=400, detail=f"Nieznany typ urządzenia: {device.type}. Dostępne: {list(DEVICE_TYPE_MAPPING.keys())}")
+
+    DeviceClass = DEVICE_TYPE_MAPPING[device.type]
+    new_device = DeviceClass(
+        device_id=device.id,
+        name=device.name,
+        topic=device.topic
+    )
+
+    device_manager_instance.add_device(new_device)
+    
+    logger.info(f"API: Zarejestrowano nowe urządzenie: {device.name} ({device.id})")
+    return {"status": "success", "message": f"Urządzenie {device.name} dodane."}
 
 @app.post("/devices/action", summary="Wykonuje akcję na urządzeniu")
 def perform_action(request: ActionRequest):
