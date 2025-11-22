@@ -55,7 +55,7 @@ class MQTT_Client:
             else:
                 logger.error(f"Połączenie MQTT nieudane. Kod błędu (rc) = {rc}.")
 
-    def on_disconnect(self, client, userdata, rc, properties=None):
+    def on_disconnect(self, client, userdata, flags, rc, properties=None):
         """
         Callback wywoływany po rozłączeniu.
         """
