@@ -1,0 +1,26 @@
+[Unit]
+Description=Smart Home Mesh System Backend
+After=network.target mosquitto.service zigbee2mqtt.service
+
+[Service]
+# Użytkownik systemowy
+User=admin
+Group=admin
+
+# Ścieżka do folderu projektu
+WorkingDirectory=/home/admin/Smart-Home_Mesh
+
+# Ścieżka do pythona w wirtualnym środowisku
+ExecStart=/home/admin/Smart-Home_Mesh/venv/bin/python main.py
+
+# Restart w razie błędu
+Restart=always
+RestartSec=5
+
+# Logi
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=smarthome_backend
+
+[Install]
+WantedBy=multi-user.target
