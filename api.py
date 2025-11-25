@@ -54,113 +54,162 @@ class RuleModel(BaseModel):
     action: dict
 
 class DeviceRegistrationModel(BaseModel):
+    """
+    Model dla rejestracji.
+    """
     id: str
     name: str
     type: str
     topic: str
 
-@app.get("/devices", summary="Pobiera listę urządzeń i ich aktualny stan")
+class GroupModel(BaseModel):
+    """
+    Model dla grupy.
+    """
+    id: str
+    name: str
+    members: List[str]
+
+class RenameRequest(BaseModel):
+    """
+    Model dla zmiany nazwy.
+    """
+    new_name: str
+
+@app.get("/devices", summary="Pobiera listę urządzeń")
 def list_devices():
     """
     Zwraca listę wszystkich urządzeń wraz z ich aktualnym stanem.
     """
     if(not device_manager_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (DM).")
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     return {"devices": device_manager_instance.get_devices_data()}
 
-@app.post("/devices", summary="Dodaje nowe urządzenie do systemu")
+@app.post("/devices", summary="Dodaje nowe urządzenie")
 def add_device(device: DeviceRegistrationModel):
     """
     Dodaje nowe urządzenie.
     """
     if(not device_manager_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany.")
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     
     if(device.type not in DEVICE_TYPE_MAPPING):
-        raise HTTPException(status_code=400, detail=f"Nieznany typ urządzenia: {device.type}. Dostępne: {list(DEVICE_TYPE_MAPPING.keys())}")
+        raise HTTPException(status_code=400, detail="Nieznany typ urządzenia.")
 
     DeviceClass = DEVICE_TYPE_MAPPING[device.type]
-    new_device = DeviceClass(
-        device_id=device.id,
-        name=device.name,
-        topic=device.topic
-    )
-
+    new_device = DeviceClass(device_id=device.id, name=device.name, topic=device.topic)
     device_manager_instance.add_device(new_device)
     
     logger.info(f"API: Zarejestrowano nowe urządzenie: {device.name} ({device.id})")
     return {"status": "success", "message": f"Urządzenie {device.name} dodane."}
 
-@app.delete("/devices/{device_id}", summary="Usuwa urządzenie z systemu")
+@app.delete("/devices/{device_id}", summary="Usuwa urządzenie")
 def delete_device(device_id: str):
     """
     Usuwa urządzenie o podanym ID.
     """
     if(not device_manager_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany.")
-         
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     if(device_manager_instance.remove_device(device_id)):
         logger.info(f"API: Usunięto urządzenie ID: {device_id}")
         return {"status": "success", "message": f"Urządzenie {device_id} usunięte."}
-    else:
-        raise HTTPException(status_code=404, detail=f"Urządzenie o ID: {device_id} nie zostało znalezione.")
+    raise HTTPException(status_code=404, detail="Urządzenie nie znalezione.")
 
-@app.post("/devices/action", summary="Wykonuje akcję na urządzeniu")
+@app.post("/devices/action", summary="Wykonuje akcję (urządzenie lub grupa)")
 def perform_action(request: ActionRequest):
     """
     Wysyła komendę sterującą do wskazanego urządzenia.
     """
-    if(not device_manager_instance or not mqtt_client_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (MQTT/DM).")
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     
     success = device_manager_instance.perform_action(
-        mqtt_client_instance, 
-        request.device_id, 
-        request.action, 
-        request.value
+        mqtt_client_instance, request.device_id, request.action, request.value
     )
-
     if(not success):
-        raise HTTPException(status_code=404, detail=f"Urządzenie o ID {request.device_id} nie zostało znalezione.")
+        logger.warning(f"API: Nieudana próba akcji '{request.action}' na celu {request.device_id}")
+        raise HTTPException(status_code=404, detail=f"Cel {request.device_id} nie znaleziony.")
     
-    logger.info(f"API: Wysłano akcję '{request.action}' do ID: {request.device_id}")
-    return {"status": "success", "message": "Akcja wysłana"}
+    logger.info(f"API: Wysłano akcję '{request.action}' do celu: {request.device_id}")
+    return {"status": "success"}
 
-@app.get("/rules", summary="Pobiera listę wszystkich aktywnych reguł")
+@app.get("/groups", summary="Pobiera listę grup")
+def list_groups():
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    return {"groups": device_manager_instance.get_groups()}
+
+@app.post("/groups", summary="Tworzy nową grupę")
+def create_group(group: GroupModel):
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    device_manager_instance.create_group(group.id, group.name, group.members)
+    
+    logger.info(f"API: Utworzono grupę '{group.name}' (ID: {group.id})")
+    return {"status": "success", "message": f"Grupa {group.name} utworzona."}
+
+@app.delete("/groups/{group_id}", summary="Usuwa grupę")
+def delete_group(group_id: str):
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    if(device_manager_instance.delete_group(group_id)):
+
+        logger.info(f"API: Usunięto grupę ID: {group_id}")
+        return {"status": "success", "message": "Grupa usunięta."}
+    raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
+
+@app.post("/system/pairing/{state}", summary="Włącza/Wyłącza parowanie")
+def set_pairing(state: str):
+    if(not mqtt_client_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    
+    is_enabled = (state.lower() == "true")
+    payload = {"permit_join": is_enabled}
+    mqtt_client_instance.publish("zigbee2mqtt/bridge/request/permit_join", payload)
+    
+    logger.info(f"API: Zmieniono tryb parowania Zigbee na: {is_enabled}")
+    return {"status": "success", "message": f"Parowanie ustawione na: {is_enabled}"}
+
+@app.put("/devices/{device_id}/rename", summary="Zmienia nazwę urządzenia")
+def rename_device(device_id: str, request: RenameRequest):
+    if(not mqtt_client_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    
+    payload = {"from": device_id, "to": request.new_name, "homeassistant_rename": False}
+    mqtt_client_instance.publish("zigbee2mqtt/bridge/request/device/rename", payload)
+    
+    logger.info(f"API: Wysłano żądanie zmiany nazwy dla {device_id} na '{request.new_name}'")
+    return {"status": "queued", "message": "Wysłano żądanie zmiany nazwy."}
+
+@app.get("/rules", summary="Pobiera reguły")
 def list_rules():
     """
     Zwraca aktualną listę reguł automatyzacji.
     """
     if(not rules_engine_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (RE).")
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     return {"rules": rules_engine_instance.get_rules()}
 
-
-@app.post("/rules", summary="Dodaje nową regułę do systemu")
+@app.post("/rules", summary="Dodaje regułę")
 def add_rule(rule: RuleModel):
     """
     Dodaje nową regułę do RulesEngine i zapisuje ją do bazy danych.
     """
     if(not rules_engine_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (RE).")
-    
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     if(rules_engine_instance.add_rule(rule.model_dump())):
-        logger.info(f"API: Dodano nową regułę ID: {rule.id}")
+        logger.info(f"API: Dodano nową regułę: {rule.name} (ID: {rule.id})")
         return {"status": "success", "id": rule.id}
-    else:
-        raise HTTPException(status_code=409, detail=f"Reguła o ID {rule.id} już istnieje.")
+    raise HTTPException(status_code=409, detail="Reguła już istnieje.")
 
-
-@app.delete("/rules/{rule_id}", summary="Usuwa regułę na podstawie jej ID")
+@app.delete("/rules/{rule_id}", summary="Usuwa regułę")
 def delete_rule(rule_id: str):
     """
     Usuwa regułę o podanym unikalnym ID.
     """
     if(not rules_engine_instance):
-         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany (RE).")
-         
+         raise HTTPException(status_code=503, detail="System niegotowy.")
     if(rules_engine_instance.remove_rule(rule_id)):
         logger.info(f"API: Usunięto regułę ID: {rule_id}")
-        return {"status": "success", "message": f"Reguła ID {rule_id} usunięta."}
-    else:
-        raise HTTPException(status_code=404, detail=f"Reguła o ID: {rule_id} nie została znaleziona.")
+        return {"status": "success"}
+    raise HTTPException(status_code=404, detail="Reguła nie znaleziona.")

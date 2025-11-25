@@ -10,26 +10,75 @@ import json
 from core.mqtt_client import MQTT_Client
 from core.device_manager import DeviceManager
 from core.rule_engine import RulesEngine
-from core.database import DatabaseManager # Dodano ten import
+from core.database import DatabaseManager
+from core.devices_types import SocketDevice, SensorDevice, LightDevice 
 from logging_config import setup_logging
 import config
 from api import app, setup_api 
 
 logger = logging.getLogger(__name__)
 
-# Globalne instancje
 device_manager: DeviceManager = None
 rules_engine: RulesEngine = None
 mqtt_client: MQTT_Client = None
 
+def determine_device_type(definition: dict) -> type:
+    """
+    Analizuje definicję urządzenia z Zigbee2MQTT i zwraca odpowiednią klasę Pythona.
+    """
+    if(not definition or "exposes" not in definition):
+        return SocketDevice
+
+    exposes = definition.get("exposes", [])
+    features = []
+    
+    for item in exposes:
+        if(item.get("type") == "light"):
+            features.append("light")
+        if(item.get("name") in ["state", "switch"]):
+            features.append("switch")
+        if(item.get("features")):
+            for sub in item.get("features"):
+                if(sub.get("name") == "state"): features.append("switch")
+                if(sub.get("name") in ["brightness", "color_xy", "color_temp"]): features.append("light")
+    if("light" in features):
+        return LightDevice
+    if("switch" in features):
+        return SocketDevice
+    return SensorDevice
+
 def on_message_callback(topic, payload):
+    """
+    Główny router wiadomości MQTT.
+    """
     device = device_manager.get_device_by_topic(topic)
     if(device):
-        logger.info(f"Odebrano dane z {device.name} ({device.device_id}). Aktualizacja stanu.")
+        logger.info(f"Odebrano dane z {device.name} ({device.device_id}).")
         device_manager.update_device(topic, payload)
         rules_engine.evaluate_state_change_rules(device.device_id) 
-    else:
-        logger.debug(f"Odebrano wiadomość z nieznanego topicu: {topic}. Pominięto.")
+        return
+    if(topic == "zigbee2mqtt/bridge/devices"):
+        logger.info("Odebrano listę urządzeń z Zigbee2MQTT. Aktualizacja bazy...")
+        if(isinstance(payload, list)):
+            for dev_data in payload:
+                if(dev_data.get("type") == "Coordinator"):
+                    continue
+                ieee_address = dev_data.get("ieee_address")
+                friendly_name = dev_data.get("friendly_name")
+                definition = dev_data.get("definition")
+                DeviceClass = determine_device_type(definition)
+                new_device = DeviceClass(
+                    device_id=ieee_address,
+                    name=friendly_name,
+                    topic=f"zigbee2mqtt/{friendly_name}"
+                )
+                device_manager.add_device(new_device)
+        logger.info("Zakończono synchronizację urządzeń z Zigbee2MQTT.")
+    elif(topic == "zigbee2mqtt/bridge/event"):
+        event_type = payload.get("type")
+        if(event_type == "device_rename"):
+            logger.info("Wykryto zmianę nazwy w Z2M. Prośba o listę urządzeń...")
+            pass
 
 def run_api_server():
     logger.info(f"Uruchomienie serwera API na http://{config.API_HOST}:{config.API_PORT}")
@@ -65,12 +114,9 @@ if(__name__ == "__main__"):
     
     check_and_create_data_dir() 
 
-    # 1. INICJALIZACJA GLOBALNYCH OBIEKTÓW
-    # Tworzymy jedną, centralną instancję DB Managera
     db_manager = DatabaseManager()
     
     mqtt_client = MQTT_Client() 
-    # Przekazujemy db_manager do konstruktorów
     device_manager = DeviceManager(db_manager=db_manager) 
     rules_engine = RulesEngine(db_manager=db_manager) 
     

@@ -54,7 +54,8 @@ class DatabaseManager:
                 name TEXT NOT NULL,
                 topic TEXT NOT NULL,
                 type TEXT NOT NULL,
-                state TEXT 
+                state TEXT,
+                attributes TEXT 
             );
         """)
         self._execute_query("""
@@ -66,13 +67,31 @@ class DatabaseManager:
                 action TEXT NOT NULL
             );
         """)
+        self._execute_query("""
+            CREATE TABLE IF NOT EXISTS groups (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                members TEXT NOT NULL
+            );
+        """)
 
     def get_all_devices_data(self) -> List[Dict[str, Any]]:
         """
         Pobiera dane wszystkich urządzeń z bazy.
         """
         cursor = self._execute_query("SELECT * FROM devices;")
-        return [dict(row) for row in cursor.fetchall()]
+        devices = []
+        for row in cursor.fetchall():
+            d = dict(row)
+            if(d.get('attributes')):
+                try:
+                    d['attributes'] = json.loads(d['attributes'])
+                except:
+                    d['attributes'] = []
+            else:
+                d['attributes'] = []
+            devices.append(d)
+        return devices
 
     def save_device_state(self, device_id: str, state: Dict[str, Any], save_config: bool = False, device_data: Optional[Dict] = None):
         """
@@ -81,12 +100,56 @@ class DatabaseManager:
         state_json = json.dumps(state)
         
         if(save_config and device_data):
+            attributes_json = json.dumps(device_data.get('attributes', []))
             self._execute_query("""
-                INSERT OR REPLACE INTO devices (id, name, topic, type, state)
-                VALUES (?, ?, ?, ?, ?)
-            """, (device_data['id'], device_data['name'], device_data['topic'], device_data['type'], state_json))
+                INSERT OR REPLACE INTO devices (id, name, topic, type, state, attributes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (device_data['id'], device_data['name'], device_data['topic'], device_data['type'], state_json, attributes_json))
         else:
             self._execute_query("UPDATE devices SET state = ? WHERE id = ?", (state_json, device_id))
+
+    def update_device_attributes(self, device_id: str, attributes: List[str]):
+        """
+        Aktualizuje listę dostępnych atrybutów dla urządzenia.
+        """
+        attr_json = json.dumps(attributes)
+        self._execute_query("UPDATE devices SET attributes = ? WHERE id = ?", (attr_json, device_id))
+    
+    def remove_device(self, device_id: str) -> bool:
+        """
+        Usuwa urządzenie z bazy danych. Zwraca True, jeśli usunięto.
+        """
+        cursor = self._execute_query("DELETE FROM devices WHERE id = ?", (device_id,))
+        return cursor.rowcount > 0
+
+    def get_all_groups(self) -> List[Dict[str, Any]]:
+        """
+        Pobiera dane wszystkich grup z bazy.
+        """
+        cursor = self._execute_query("SELECT * FROM groups;")
+        groups = []
+        for row in cursor.fetchall():
+            g = dict(row)
+            g['members'] = json.loads(g['members'])
+            groups.append(g)
+        return groups
+
+    def add_group(self, group_id: str, name: str, members: List[str]):
+        """
+        Dodaje nową grupę do bazy danych.
+        """
+        members_json = json.dumps(members)
+        self._execute_query("""
+            INSERT OR REPLACE INTO groups (id, name, members)
+            VALUES (?, ?, ?)
+        """, (group_id, name, members_json))
+
+    def remove_group(self, group_id: str) -> bool:
+        """
+        Usuwa grupę z bazy danych. Zwraca True, jeśli usunięto.
+        """
+        cursor = self._execute_query("DELETE FROM groups WHERE id = ?", (group_id,))
+        return cursor.rowcount > 0
 
     def get_all_rules_data(self) -> List[Dict[str, Any]]:
         """
@@ -120,11 +183,4 @@ class DatabaseManager:
         Usuwa regułę na podstawie ID i zwraca True, jeśli rekord został usunięty.
         """
         cursor = self._execute_query("DELETE FROM rules WHERE id = ?", (rule_id,))
-        return cursor.rowcount > 0
-    
-    def remove_device(self, device_id: str) -> bool:
-        """
-        Usuwa urządzenie z bazy danych. Zwraca True, jeśli usunięto.
-        """
-        cursor = self._execute_query("DELETE FROM devices WHERE id = ?", (device_id,))
         return cursor.rowcount > 0

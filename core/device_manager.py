@@ -21,6 +21,8 @@ class DeviceManager:
     """
     def __init__(self, db_manager: DatabaseManager):
         self.devices: dict[str, BaseDevice] = {}
+        self.device_attributes: dict[str, list] = {}
+        self.groups: dict[str, dict] = {}
         self._lock = threading.Lock()
         self.db_manager = db_manager
         self.load_from_db()
@@ -30,10 +32,10 @@ class DeviceManager:
             if(device.device_id in self.devices):
                 logger.warning(f"Urządzenie o ID {device.device_id} już istnieje. Pominięto dodanie.")
                 return
-            
             self.devices[device.device_id] = device
+            self.device_attributes[device.device_id] = []
         
-        logger.info(f"Dodano urządzenie: {device.name} (ID: {device.device_id}, Topic: {device.topic})")
+        logger.info(f"Dodano urządzenie: {device.name} (ID: {device.device_id})")
         self.save_device_to_db(device, save_config=True)
 
     def remove_device(self, device_id: str) -> bool:
@@ -44,13 +46,11 @@ class DeviceManager:
         with self._lock:
             if(device_id in self.devices):
                 del self.devices[device_id]
+                self.device_attributes.pop(device_id, None)
                 logger.info(f"Usunięto urządzenie: {device_id}")
                 return True
         if(db_success):
-            logger.info(f"Usunięto urządzenie (tylko z DB): {device_id}")
             return True
-            
-        logger.warning(f"Próba usunięcia nieistniejącego urządzenia: {device_id}")
         return False
 
     def get_device_by_topic(self, topic: str) -> BaseDevice | None:
@@ -65,48 +65,93 @@ class DeviceManager:
         if(device):
             device.update_state(payload)
             self.save_device_to_db(device, save_config=False)
+            self._update_known_attributes(device.device_id, payload)
         else:
             logger.debug(f"Pominięto aktualizację: Nie znaleziono urządzenia dla topicu: {topic}")
 
-    def perform_action(self, mqtt_client, device_id: str, action: str, value=None) -> bool:
+    def _update_known_attributes(self, device_id: str, payload: dict):
+        """
+        Sprawdza, czy w payloadzie są nowe klucze i zapisuje je w bazie.
+        """
         with self._lock:
-            device = self.devices.get(device_id)
+            current_attrs = set(self.device_attributes.get(device_id, []))
+            new_keys = set(payload.keys())
+            
+            ignored_keys = {"linkquality", "last_seen", "update", "update_available"}
+            new_keys = new_keys - ignored_keys
+
+            if(not new_keys.issubset(current_attrs)):
+                updated_attrs = list(current_attrs.union(new_keys))
+                self.device_attributes[device_id] = updated_attrs
+                self.db_manager.update_device_attributes(device_id, updated_attrs)
+                logger.info(f"Zaktualizowano atrybuty dla {device_id}: {updated_attrs}")
+
+    def create_group(self, group_id: str, name: str, members: list[str]):
+        with self._lock:
+            self.groups[group_id] = {"id": group_id, "name": name, "members": members}
+        self.db_manager.add_group(group_id, name, members)
+        logger.info(f"Utworzono grupę: {name} ({group_id}) z członkami: {members}")
+
+    def delete_group(self, group_id: str) -> bool:
+        success = self.db_manager.remove_group(group_id)
+        with self._lock:
+            if(group_id in self.groups):
+                del self.groups[group_id]
+                logger.info(f"Usunięto grupę: {group_id}")
+                return True
+        return success
+
+    def get_groups(self) -> list[dict]:
+        with self._lock:
+            return list(self.groups.values())
+
+    def perform_action(self, mqtt_client, target_id: str, action: str, value=None) -> bool:
+        """
+        Wykonuje akcję na urządzeniu LUB na grupie urządzeń.
+        """
+        with self._lock:
+            group = self.groups.get(target_id)
+        
+        if(group):
+            logger.info(f"Wykonywanie akcji grupowej na {target_id}...")
+            members = group.get("members", [])
+            for member_id in members:
+                self.perform_action(mqtt_client, member_id, action, value)
+            return True
+        with self._lock:
+            device = self.devices.get(target_id)
 
         if(device):
             device.perform_action(mqtt_client, action, value)
             return True
-        else:
-            logger.warning(f"Nie znaleziono urządzenia o ID: {device_id} do wykonania akcji '{action}'.")
-            return False
 
     def load_from_db(self):
         devices_data = self.db_manager.get_all_devices_data()
         
         with self._lock:
             self.devices.clear()
+            self.device_attributes.clear()
             for d in devices_data:
                 dtype = d.get("type")
                 device_class = DEVICE_TYPE_MAPPING.get(dtype)
                 
                 if(device_class):
                     try:
-                        device = device_class(
-                            device_id=d["id"], 
-                            name=d["name"], 
-                            topic=d["topic"]
-                        )
+                        device = device_class(device_id=d["id"], name=d["name"], topic=d["topic"])
                         if(d.get("state")):
-                            state_dict = json.loads(d["state"])
-                            device.update_state(state_dict) 
-                        self.devices[device.device_id] = device 
-                    except KeyError as e:
-                        logger.error(f"Błąd: Brakuje wymaganego pola {e} w konfiguracji urządzenia typu {dtype}.")
-                    except json.JSONDecodeError as e:
-                         logger.error(f"Błąd dekodowania stanu JSON dla urządzenia {d.get('name')}: {e}")
-                else:
-                    logger.warning(f"Nieznany typ urządzenia: {dtype}. Pomijam urządzenie {d.get('name', 'Brak nazwy')}.")
-        
-        logger.info(f"Wczytano i zainicjalizowano {len(self.devices)} urządzeń z bazy danych.")
+                            device.update_state(json.loads(d["state"]))
+                        self.devices[device.device_id] = device
+                        self.device_attributes[device.device_id] = d.get("attributes", [])
+                    except Exception as e:
+                        logger.error(f"Błąd inicjalizacji urządzenia {d.get('id')}: {e}")
+
+        groups_data = self.db_manager.get_all_groups()
+        with self._lock:
+            self.groups.clear()
+            for g in groups_data:
+                self.groups[g['id']] = g
+
+        logger.info(f"Wczytano {len(self.devices)} urządzeń i {len(self.groups)} grup.")
 
     def save_device_to_db(self, device: BaseDevice, save_config: bool = False):
         device_data = {
@@ -114,20 +159,20 @@ class DeviceManager:
             "name": device.name,
             "topic": device.topic,
             "type": device.__class__.__name__.replace("Device", "").lower(),
+            "attributes": self.device_attributes.get(device.device_id, [])
         }
         self.db_manager.save_device_state(device.device_id, device.state, save_config=save_config, device_data=device_data)
 
     def get_devices_data(self) -> list[dict]:
         data = []
         with self._lock:
-            devices_snapshot = list(self.devices.values())
-
-        for device in devices_snapshot:
-            data.append({
-                "id": device.device_id,
-                "name": device.name,
-                "type": device.__class__.__name__.replace("Device", "").lower(),
-                "topic": device.topic,
-                "state": device.state
-            })
+            for device in self.devices.values():
+                data.append({
+                    "id": device.device_id,
+                    "name": device.name,
+                    "type": device.__class__.__name__.replace("Device", "").lower(),
+                    "topic": device.topic,
+                    "state": device.state,
+                    "available_keys": self.device_attributes.get(device.device_id, []) # Dla frontendu
+                })
         return data
