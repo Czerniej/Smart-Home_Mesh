@@ -56,7 +56,7 @@ class DeviceManager:
     def get_device_by_topic(self, topic: str) -> BaseDevice | None:
         with self._lock:
             for device in self.devices.values():
-                if(device.topic in topic): 
+                if(topic == device.topic or topic.startswith(device.topic + "/")): 
                     return device
         return None
 
