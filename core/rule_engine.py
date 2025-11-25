@@ -87,16 +87,21 @@ class RulesEngine:
     def evaluate_time_rules(self, current_minute: str):
         with self._lock:
             rules_snapshot = list(self.rules)
-
+        now = datetime.now()
+        current_full_timestamp = now.strftime("%Y-%m-%d %H:%M")
         for rule in rules_snapshot:
             cond = rule.get("trigger", {})
             if(rule.get("active", True) and cond.get("type") == "time"):
                 target_time = cond.get("time")
                 rule_id = rule['id']
                 with self._lock:
-                    if(rule_id in self.rule_states and self.rule_states[rule_id]['last_triggered'].strftime("%H:%M") == current_minute):
-                        logger.debug(f"Pominięto regułę czasową ID={rule_id}: już wyzwolona w tej minucie.")
+                    last_run = self.rule_states[rule_id]['last_triggered']
+                    last_run_str = last_run.strftime("%Y-%m-%d %H:%M")
+                    if(last_run_str == current_full_timestamp):
+                        logger.debug(f"Pominięto regułę czasową ID={rule_id}: już wyzwolona dzisiaj o tej godzinie.")
                         continue
+                    if(self.rule_states[rule_id]['is_active'] and target_time != current_minute):
+                         self.rule_states[rule_id]['is_active'] = False
                 if(target_time == current_minute):
                     logger.info(f"Reguła czasowa spełniona ID={rule_id} ({target_time})")
                     self._handle_rule_trigger(rule)
