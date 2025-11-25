@@ -9,8 +9,6 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# Usunięto globalną instancję db_manager stąd.
-
 DEVICE_TYPE_MAPPING = {
     "light": LightDevice,
     "socket": SocketDevice,
@@ -24,7 +22,7 @@ class DeviceManager:
     def __init__(self, db_manager: DatabaseManager):
         self.devices: dict[str, BaseDevice] = {}
         self._lock = threading.Lock()
-        self.db_manager = db_manager # Zapisujemy przekazaną instancję
+        self.db_manager = db_manager
         self.load_from_db()
 
     def add_device(self, device: BaseDevice):
@@ -37,6 +35,23 @@ class DeviceManager:
         
         logger.info(f"Dodano urządzenie: {device.name} (ID: {device.device_id}, Topic: {device.topic})")
         self.save_device_to_db(device, save_config=True)
+
+    def remove_device(self, device_id: str) -> bool:
+        """
+        Usuwa urządzenie z pamięci i z bazy danych.
+        """
+        db_success = self.db_manager.remove_device(device_id)
+        with self._lock:
+            if(device_id in self.devices):
+                del self.devices[device_id]
+                logger.info(f"Usunięto urządzenie: {device_id}")
+                return True
+        if(db_success):
+            logger.info(f"Usunięto urządzenie (tylko z DB): {device_id}")
+            return True
+            
+        logger.warning(f"Próba usunięcia nieistniejącego urządzenia: {device_id}")
+        return False
 
     def get_device_by_topic(self, topic: str) -> BaseDevice | None:
         with self._lock:

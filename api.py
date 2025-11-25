@@ -91,6 +91,20 @@ def add_device(device: DeviceRegistrationModel):
     logger.info(f"API: Zarejestrowano nowe urządzenie: {device.name} ({device.id})")
     return {"status": "success", "message": f"Urządzenie {device.name} dodane."}
 
+@app.delete("/devices/{device_id}", summary="Usuwa urządzenie z systemu")
+def delete_device(device_id: str):
+    """
+    Usuwa urządzenie o podanym ID.
+    """
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System nie został poprawnie zainicjalizowany.")
+         
+    if(device_manager_instance.remove_device(device_id)):
+        logger.info(f"API: Usunięto urządzenie ID: {device_id}")
+        return {"status": "success", "message": f"Urządzenie {device_id} usunięte."}
+    else:
+        raise HTTPException(status_code=404, detail=f"Urządzenie o ID: {device_id} nie zostało znalezione.")
+
 @app.post("/devices/action", summary="Wykonuje akcję na urządzeniu")
 def perform_action(request: ActionRequest):
     """

@@ -121,3 +121,10 @@ class DatabaseManager:
         """
         cursor = self._execute_query("DELETE FROM rules WHERE id = ?", (rule_id,))
         return cursor.rowcount > 0
+    
+    def remove_device(self, device_id: str) -> bool:
+        """
+        Usuwa urządzenie z bazy danych. Zwraca True, jeśli usunięto.
+        """
+        cursor = self._execute_query("DELETE FROM devices WHERE id = ?", (device_id,))
+        return cursor.rowcount > 0
