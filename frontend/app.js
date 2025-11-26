@@ -480,7 +480,7 @@ async function openAddMemberModal() {
     const container = document.getElementById('available-devices-list');
     container.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
     const modalEl = document.getElementById('addMemberModal');
-    const modal = new bootstrap.Modal(modalEl); 
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
     try {
@@ -488,7 +488,7 @@ async function openAddMemberModal() {
         const data = await res.json();
         const allDevices = data.devices;
         if (!currentGroupDetails || !currentGroupDetails.members) {
-            container.innerHTML = '<div class="text-danger p-3">Błąd: Nie załadowano danych grupy. Odśwież stronę.</div>';
+            alert("Błąd wewnętrzny: Nie załadowano danych grupy w pamięci przeglądarki.");
             return;
         }
         const available = allDevices.filter(d => !currentGroupDetails.members.includes(d.id));
@@ -511,6 +511,7 @@ async function openAddMemberModal() {
                 <small class="text-muted">${dev.type}</small>
             `;
             btn.onclick = function() {
+                alert("Kliknięto przycisk dla urządzenia: " + dev.name + "\nID: " + dev.id + "\nRozpoczynam wysyłanie...");
                 addMemberToGroup(currentGroupDetails.id, dev.id);
             };
             
@@ -518,25 +519,35 @@ async function openAddMemberModal() {
         });
 
     } catch(e) { 
-        container.innerText = "Błąd pobierania listy: " + e; 
+        container.innerText = "Błąd pobierania listy urządzeń: " + e; 
+        alert("Błąd krytyczny przy otwieraniu listy: " + e);
     }
 }
 
 async function addMemberToGroup(groupId, deviceId) {
+    const url = `${API_URL}/groups/${groupId}/devices/${deviceId}`;
+    alert("Wysyłam żądanie POST do adresu:\n" + url);
     try {
-        const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'POST' });
+        const res = await fetch(url, { method: 'POST' });
         
+        alert("Otrzymano odpowiedź z serwera. Status: " + res.status);
+
         if(res.ok) {
+            alert("Sukces! Urządzenie dodane. Odświeżam widok.");
             const modalEl = document.getElementById('addMemberModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if(modal) modal.hide();
             showGroupDetails(groupId);
         } else {
-            const err = await res.json();
-            alert("Błąd serwera: " + (err.detail || res.statusText));
+            try {
+                const err = await res.json();
+                alert("Serwer zwrócił błąd: " + (err.detail || JSON.stringify(err)));
+            } catch (jsonError) {
+                alert("Serwer zwrócił błąd (brak szczegółów JSON). Status: " + res.status);
+            }
         }
     } catch(e) { 
-        alert("Błąd sieci/krytyczny: " + e); 
+        alert("Błąd sieci/krytyczny w funkcji fetch: " + e); 
     }
 }
 
@@ -545,9 +556,9 @@ async function removeMemberFromGroup(groupId, deviceId) {
     try {
         const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'DELETE' });
         if(res.ok) {
-            showGroupDetails(groupId);
+            showGroupDetails(groupId); 
         } else {
-            alert("Błąd usuwania z grupy.");
+            alert("Błąd usuwania z grupy. Status: " + res.status);
         }
     } catch(e) { alert("Błąd: " + e); }
 }
