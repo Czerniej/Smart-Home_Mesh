@@ -52,58 +52,66 @@ function loadPage(pageName) {
 }
 
 async function showDeviceDetails(deviceId, source = 'devices') {
-    currentDetailId = deviceId;
-    const device = currentDevices.find(d => d.id === deviceId);
-    if(!device) return;
-    const backBtn = document.getElementById('btn-device-back');
-    const newBtn = backBtn.cloneNode(true);
-    backBtn.parentNode.replaceChild(newBtn, backBtn);
-    if(source === 'group_details') {
-        newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
-        newBtn.onclick = function() {
-            if (currentGroupDetails) {
-                showGroupDetails(currentGroupDetails.id);
-            } else {
-                loadPage('groups');
-            }
-        };
-    } else {
-        newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
-        newBtn.onclick = function() { loadPage('devices'); };
-    }
-    document.getElementById('detail-name').innerText = device.name;
-    document.getElementById('detail-id').innerText = device.id;
-    document.getElementById('detail-new-name-input').value = device.name;
+    try {
+        currentDetailId = deviceId;
+        const device = currentDevices.find(d => d.id === deviceId);
+        if(!device) return;
 
-    const attrList = document.getElementById('detail-attributes');
-    attrList.innerHTML = '';
-    if(device.state) {
-        for (const [key, value] of Object.entries(device.state)) {
-            if(typeof value === 'object') continue;
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
-            attrList.appendChild(li);
+        const backBtn = document.getElementById('btn-device-back');
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
+
+        if(source === 'group_details') {
+            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+            newBtn.onclick = function() {
+                if (currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
+                else { loadPage('groups'); }
+            };
+        } else {
+            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
+            newBtn.onclick = function() { loadPage('devices'); };
         }
+
+        document.getElementById('detail-name').innerText = device.name;
+        document.getElementById('detail-id').innerText = device.id;
+        document.getElementById('detail-new-name-input').value = device.name;
+
+        const attrList = document.getElementById('detail-attributes');
+        attrList.innerHTML = '';
+        if(device.state) {
+            for (const [key, value] of Object.entries(device.state)) {
+                if(typeof value === 'object') continue;
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
+                attrList.appendChild(li);
+            }
+        }
+        const controls = document.getElementById('detail-controls');
+        controls.innerHTML = '';
+        if(device.type === 'socket' || device.type === 'light') {
+            const btn = document.createElement('button');
+            const isOn = device.state && device.state.state === 'ON';
+            btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
+            btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
+            btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
+            controls.appendChild(btn);
+        } else {
+            controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
+        }
+
+        document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
+        
+        await renderEmbeddedRules(deviceId, 'device-rules-list');
+
+        document.getElementById('view-devices').classList.add('d-none');
+        document.getElementById('view-groups').classList.add('d-none');
+        document.getElementById('view-group-details').classList.add('d-none');
+        document.getElementById('view-device-details').classList.remove('d-none');
+    } catch (e) {
+        console.error("Błąd w showDeviceDetails:", e);
+        alert("Błąd ładowania szczegółów urządzenia.");
     }
-    const controls = document.getElementById('detail-controls');
-    controls.innerHTML = '';
-    if(device.type === 'socket' || device.type === 'light') {
-        const btn = document.createElement('button');
-        const isOn = device.state && device.state.state === 'ON';
-        btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
-        btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
-        btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
-        controls.appendChild(btn);
-    } else {
-        controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
-    }
-    document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
-    await renderEmbeddedRules(deviceId, 'device-rules-list');
-    document.getElementById('view-devices').classList.add('d-none');
-    document.getElementById('view-groups').classList.add('d-none');
-    document.getElementById('view-group-details').classList.add('d-none');
-    document.getElementById('view-device-details').classList.remove('d-none');
 }
 
 async function fetchAndDisplayDevices() {
@@ -479,10 +487,10 @@ function createGroupMemberCard(device, groupId) {
     let colorClass = 'text-secondary';
     const state = device.state?.state || 'UNKNOWN';
 
-    if (device.type === 'socket') icon = 'fa-plug';
-    else if (device.type === 'light') icon = 'fa-lightbulb';
-    else if (device.type === 'sensor') icon = 'fa-temperature-half';
-    if (state === 'ON') colorClass = 'text-warning';
+    if(device.type === 'socket') icon = 'fa-plug';
+    else if(device.type === 'light') icon = 'fa-lightbulb';
+    else if(device.type === 'sensor') icon = 'fa-temperature-half';
+    if(state === 'ON') colorClass = 'text-warning';
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0 bg-white device-in-group-card" 
@@ -523,7 +531,7 @@ async function openAddMemberModal() {
         const data = await res.json();
         const allDevices = data.devices;
         
-        if (!currentGroupDetails || !currentGroupDetails.members) return;
+        if(!currentGroupDetails || !currentGroupDetails.members) return;
         const available = allDevices.filter(d => !currentGroupDetails.members.includes(d.id));
 
         container.innerHTML = '';
@@ -986,5 +994,48 @@ async function deleteCurrentRule() {
             await fetch(`${API_URL}/rules/${currentEditRuleId}`, { method: 'DELETE' });
             loadPage('rules');
         } catch(e) { alert("Błąd: " + e); }
+    }
+}
+
+async function renderEmbeddedRules(targetId, listElementId) {
+    const listEl = document.getElementById(listElementId);
+    listEl.innerHTML = '<li class="list-group-item text-muted"><small>Ładowanie...</small></li>';
+
+    try {
+        const res = await fetch(`${API_URL}/rules`);
+        const data = await res.json();
+        const rules = data.rules || [];
+        const relatedRules = rules.filter(r => 
+            (r.trigger && r.trigger.device_id === targetId) || 
+            (r.action && r.action.device_id === targetId)
+        );
+
+        listEl.innerHTML = '';
+        if(relatedRules.length === 0) {
+            listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
+            return;
+        }
+        relatedRules.forEach(r => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center list-group-item-action';
+            li.style.cursor = 'pointer';
+            li.onclick = () => {
+                currentRules = rules;
+                showRuleDetails(r.id);
+            };
+            let icon = 'fa-arrow-right';
+            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+
+            li.innerHTML = `
+                <span><i class="fa-solid ${icon} me-2"></i> ${r.name}</span>
+                <i class="fa-solid fa-chevron-right text-muted small"></i>
+            `;
+            listEl.appendChild(li);
+        });
+
+    } catch(e) { 
+        console.error(e); 
+        listEl.innerHTML = '<li class="list-group-item text-danger">Błąd ładowania reguł.</li>'; 
     }
 }
