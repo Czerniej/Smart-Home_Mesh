@@ -114,6 +114,7 @@
                     </ul>
                 </div>
             </div>
+        </div>
 
         <div id="view-groups" class="d-none">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -190,9 +191,8 @@
                 <div class="col-12 text-center text-muted">Brak reguł.</div>
             </div>
         </div>
-    </div>
 
-    <div id="view-rule-details" class="d-none">
+        <div id="view-rule-details" class="d-none">
             <button class="btn btn-outline-secondary mb-3" onclick="loadPage('rules')">
                 <i class="fa-solid fa-arrow-left"></i> Powrót do Automatyzacji
             </button>
@@ -222,8 +222,7 @@
                             <div id="edit-trigger-device-block">
                                 <div class="mb-3">
                                     <label class="form-label">Urządzenie</label>
-                                    <select class="form-select" id="edit-trigger-device" onchange="updateEditTriggerAttributes()">
-                                    </select>
+                                    <select class="form-select" id="edit-trigger-device" onchange="updateEditTriggerAttributes()"></select>
                                 </div>
                                 <div class="row g-2">
                                     <div class="col-6">
@@ -286,6 +285,7 @@
             </div>
         </div>
 
+    </div>
     <div class="modal fade" id="addDeviceModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
