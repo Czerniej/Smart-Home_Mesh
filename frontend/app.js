@@ -452,13 +452,16 @@ function createGroupMemberCard(device, groupId) {
     let colorClass = 'text-secondary';
     const state = device.state?.state || 'UNKNOWN';
 
-    if(device.type === 'socket') icon = 'fa-plug';
-    else if(device.type === 'light') icon = 'fa-lightbulb';
-    else if(device.type === 'sensor') icon = 'fa-temperature-half';
-    if(state === 'ON') colorClass = 'text-warning';
+    if (device.type === 'socket') icon = 'fa-plug';
+    else if (device.type === 'light') icon = 'fa-lightbulb';
+    else if (device.type === 'sensor') icon = 'fa-temperature-half';
+    if (state === 'ON') colorClass = 'text-warning';
 
     col.innerHTML = `
-        <div class="card h-100 shadow-sm border-0 bg-white">
+        <div class="card h-100 shadow-sm border-0 bg-white device-in-group-card" 
+             onclick="showDeviceDetails('${device.id}')" 
+             style="cursor: pointer; transition: transform 0.2s;">
+             
             <div class="card-body d-flex align-items-center p-2">
                 <div class="me-3 text-center" style="width: 40px;">
                     <i class="fa-solid ${icon} fa-lg ${colorClass}"></i>
@@ -467,8 +470,13 @@ function createGroupMemberCard(device, groupId) {
                     <h6 class="card-title mb-0">${device.name}</h6>
                     <small class="text-muted" style="font-size: 0.8rem">${state}</small>
                 </div>
-                <button class="btn btn-outline-danger btn-sm" onclick="removeMemberFromGroup('${groupId}', '${device.id}')" title="Usuń z grupy">
-                    <i class="fa-solid fa-user-minus"></i>
+                
+                <!-- Przycisk usuwania z grupy -->
+                <!-- event.stopPropagation() jest kluczowe, żeby nie uruchamiać onclick rodzica -->
+                <button class="btn btn-outline-danger btn-sm" 
+                        onclick="event.stopPropagation(); removeMemberFromGroup('${groupId}', '${device.id}')" 
+                        title="Usuń z grupy">
+                    <i class="fa-solid fa-minus"></i>
                 </button>
             </div>
         </div>
@@ -480,17 +488,15 @@ async function openAddMemberModal() {
     const container = document.getElementById('available-devices-list');
     container.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
     const modalEl = document.getElementById('addMemberModal');
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 
     try {
         const res = await fetch(`${API_URL}/devices`);
         const data = await res.json();
         const allDevices = data.devices;
-        if (!currentGroupDetails || !currentGroupDetails.members) {
-            alert("Błąd wewnętrzny: Nie załadowano danych grupy w pamięci przeglądarki.");
-            return;
-        }
+        
+        if (!currentGroupDetails || !currentGroupDetails.members) return;
         const available = allDevices.filter(d => !currentGroupDetails.members.includes(d.id));
 
         container.innerHTML = '';
@@ -510,44 +516,31 @@ async function openAddMemberModal() {
                 </span>
                 <small class="text-muted">${dev.type}</small>
             `;
-            btn.onclick = function() {
-                alert("Kliknięto przycisk dla urządzenia: " + dev.name + "\nID: " + dev.id + "\nRozpoczynam wysyłanie...");
-                addMemberToGroup(currentGroupDetails.id, dev.id);
-            };
-            
+            btn.onclick = () => addMemberToGroup(currentGroupDetails.id, dev.id);
             container.appendChild(btn);
         });
 
     } catch(e) { 
-        container.innerText = "Błąd pobierania listy urządzeń: " + e; 
-        alert("Błąd krytyczny przy otwieraniu listy: " + e);
+        container.innerText = "Błąd pobierania listy urządzeń."; 
+        console.error(e);
     }
 }
 
 async function addMemberToGroup(groupId, deviceId) {
-    const url = `${API_URL}/groups/${groupId}/devices/${deviceId}`;
-    alert("Wysyłam żądanie POST do adresu:\n" + url);
     try {
-        const res = await fetch(url, { method: 'POST' });
+        const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'POST' });
         
-        alert("Otrzymano odpowiedź z serwera. Status: " + res.status);
-
         if(res.ok) {
-            alert("Sukces! Urządzenie dodane. Odświeżam widok.");
             const modalEl = document.getElementById('addMemberModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if(modal) modal.hide();
             showGroupDetails(groupId);
         } else {
-            try {
-                const err = await res.json();
-                alert("Serwer zwrócił błąd: " + (err.detail || JSON.stringify(err)));
-            } catch (jsonError) {
-                alert("Serwer zwrócił błąd (brak szczegółów JSON). Status: " + res.status);
-            }
+            const err = await res.json();
+            alert("Nie udało się dodać urządzenia: " + (err.detail || res.statusText));
         }
     } catch(e) { 
-        alert("Błąd sieci/krytyczny w funkcji fetch: " + e); 
+        alert("Błąd sieci: " + e); 
     }
 }
 
@@ -558,7 +551,7 @@ async function removeMemberFromGroup(groupId, deviceId) {
         if(res.ok) {
             showGroupDetails(groupId); 
         } else {
-            alert("Błąd usuwania z grupy. Status: " + res.status);
+            alert("Błąd usuwania z grupy.");
         }
     } catch(e) { alert("Błąd: " + e); }
 }
