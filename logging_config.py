@@ -1,8 +1,6 @@
 import logging
 import logging.config
-
-LOG_FILE = "smart_home.log"
-LOG_LEVEL = logging.INFO 
+import config
 
 def setup_logging():
     """
@@ -34,10 +32,10 @@ def setup_logging():
             'file': {
                 'class': 'logging.handlers.RotatingFileHandler',
                 'formatter': 'standard',
-                'filename': LOG_FILE,
+                'filename': config.LOG_FILE_PATH,
                 'maxBytes': 1024 * 1024 * 5,  # 5 MB
                 'backupCount': 5,
-                'level': LOG_LEVEL,
+                'level': config.LOG_LEVEL if hasattr(config, 'LOG_LEVEL') else logging.INFO,
             },
         },
         'loggers': {
