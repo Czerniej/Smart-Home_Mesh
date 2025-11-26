@@ -480,14 +480,17 @@ async function openAddMemberModal() {
     const container = document.getElementById('available-devices-list');
     container.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
     const modalEl = document.getElementById('addMemberModal');
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show()
+    const modal = new bootstrap.Modal(modalEl); 
+    modal.show();
 
     try {
         const res = await fetch(`${API_URL}/devices`);
         const data = await res.json();
         const allDevices = data.devices;
-        
+        if (!currentGroupDetails || !currentGroupDetails.members) {
+            container.innerHTML = '<div class="text-danger p-3">Błąd: Nie załadowano danych grupy. Odśwież stronę.</div>';
+            return;
+        }
         const available = allDevices.filter(d => !currentGroupDetails.members.includes(d.id));
 
         container.innerHTML = '';
@@ -498,6 +501,7 @@ async function openAddMemberModal() {
 
         available.forEach(dev => {
             const btn = document.createElement('button');
+            btn.type = "button";
             btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
             btn.innerHTML = `
                 <span>
@@ -506,30 +510,33 @@ async function openAddMemberModal() {
                 </span>
                 <small class="text-muted">${dev.type}</small>
             `;
-            btn.onclick = () => addMemberToGroup(currentGroupDetails.id, dev.id);
+            btn.onclick = function() {
+                addMemberToGroup(currentGroupDetails.id, dev.id);
+            };
+            
             container.appendChild(btn);
         });
 
-    } catch(e) { console.error(e); container.innerText = "Błąd pobierania listy."; }
+    } catch(e) { 
+        container.innerText = "Błąd pobierania listy: " + e; 
+    }
 }
 
 async function addMemberToGroup(groupId, deviceId) {
-    console.log(`Próba dodania urządzenia ${deviceId} do grupy ${groupId}...`);
     try {
         const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'POST' });
+        
         if(res.ok) {
-            console.log("Sukces! Zamykam modal i odświeżam.");
             const modalEl = document.getElementById('addMemberModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if(modal) modal.hide();
             showGroupDetails(groupId);
         } else {
             const err = await res.json();
-            alert("Błąd dodawania: " + (err.detail || res.statusText));
+            alert("Błąd serwera: " + (err.detail || res.statusText));
         }
     } catch(e) { 
-        console.error(e);
-        alert("Błąd sieci: " + e); 
+        alert("Błąd sieci/krytyczny: " + e); 
     }
 }
 
@@ -538,10 +545,9 @@ async function removeMemberFromGroup(groupId, deviceId) {
     try {
         const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'DELETE' });
         if(res.ok) {
-            showGroupDetails(groupId); 
+            showGroupDetails(groupId);
         } else {
-            const err = await res.json();
-            alert("Błąd usuwania: " + (err.detail || "Nieznany błąd"));
+            alert("Błąd usuwania z grupy.");
         }
-    } catch(e) { alert("Błąd sieci: " + e); }
+    } catch(e) { alert("Błąd: " + e); }
 }
