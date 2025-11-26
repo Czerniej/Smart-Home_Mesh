@@ -643,12 +643,30 @@ async function fetchAndDisplayRules() {
     container.innerHTML = '<div class="spinner-border"></div>';
 
     try {
-        const res = await fetch(`${API_URL}/rules`);
-        const data = await res.json();
-        currentRules = data.rules;
+        const [resRules, resDev, resGrp] = await Promise.all([
+            fetch(`${API_URL}/rules`),
+            fetch(`${API_URL}/devices`),
+            fetch(`${API_URL}/groups`)
+        ]);
+
+        const dataRules = await resRules.json();
+        const dataDev = await resDev.json();
+        const dataGrp = await resGrp.json();
+        currentRules = dataRules.rules || [];
+        const allDevices = dataDev.devices || [];
+        const allGroups = dataGrp.groups || [];
+        const getName = (id) => {
+            const dev = allDevices.find(d => d.id === id);
+            if (dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
+            
+            const grp = allGroups.find(g => g.id === id);
+            if (grp) return `<span class="fw-bold text-success">[GRUPA] ${g.name}</span>`;
+            
+            return `<span class="text-muted">${id}</span>`;
+        };
         
         container.innerHTML = '';
-        if(currentRules.length === 0) {
+        if (currentRules.length === 0) {
             container.innerHTML = '<div class="col-12 text-center text-muted mt-5"><h5>Brak reguł.</h5><p>Kliknij "Nowa Reguła", aby zautomatyzować dom.</p></div>';
             return;
         }
@@ -658,19 +676,19 @@ async function fetchAndDisplayRules() {
             col.className = 'col-12';
             
             let triggerDesc = '';
-            if(rule.trigger.type === 'time') {
+            if (rule.trigger.type === 'time') {
                 triggerDesc = `🕒 Godzina <b>${rule.trigger.time}</b>`;
             } else {
-                triggerDesc = `⚡ Gdy <b>${rule.trigger.device_id}</b> ma <b>${rule.trigger.key}</b> ${rule.trigger.operator} <b>${rule.trigger.value}</b>`;
+                triggerDesc = `⚡ Gdy ${getName(rule.trigger.device_id)} ma <b>${rule.trigger.key}</b> ${rule.trigger.operator} <b>${rule.trigger.value}</b>`;
             }
 
-            const actionDesc = `▶️ Wykonaj <b>${rule.action.command}</b> na <b>${rule.action.device_id}</b>`;
+            const actionDesc = `▶️ Wykonaj <b>${rule.action.command}</b> na ${getName(rule.action.device_id)}`;
 
             col.innerHTML = `
                 <div class="card shadow-sm rule-card" onclick="showRuleDetails('${rule.id}')" style="cursor: pointer;">
                     <div class="card-body">
                         <h5 class="card-title mb-1">${rule.name}</h5>
-                        <p class="card-text mb-0 text-muted">
+                        <p class="card-text mb-0 text-muted" style="font-size: 0.9rem;">
                             ${triggerDesc} <br> ${actionDesc}
                         </p>
                     </div>
@@ -1094,16 +1112,37 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
     listEl.innerHTML = '<li class="list-group-item text-muted"><small>Ładowanie...</small></li>';
 
     try {
-        const res = await fetch(`${API_URL}/rules`);
-        const data = await res.json();
-        const rules = data.rules || [];
-        const relatedRules = rules.filter(r => 
+        if (currentRules.length === 0) {
+            const res = await fetch(`${API_URL}/rules`);
+            const data = await res.json();
+            currentRules = data.rules || [];
+        }
+        if (currentDevices.length === 0) {
+            const res = await fetch(`${API_URL}/devices`);
+            const data = await res.json();
+            currentDevices = data.devices || [];
+        }
+        if (currentGroups.length === 0) {
+            const res = await fetch(`${API_URL}/groups`);
+            const data = await res.json();
+            currentGroups = data.groups || [];
+        }
+
+        const getName = (id) => {
+            const dev = currentDevices.find(d => d.id === id);
+            if (dev) return `<span class="fw-bold">${dev.name}</span>`;
+            const grp = currentGroups.find(g => g.id === id);
+            if (grp) return `<span class="fw-bold">[GRUPA] ${g.name}</span>`;
+            return `<span class="text-muted">${id}</span>`;
+        };
+
+        const relatedRules = currentRules.filter(r => 
             (r.trigger && r.trigger.device_id === targetId) || 
             (r.action && r.action.device_id === targetId)
         );
 
         listEl.innerHTML = '';
-        if(relatedRules.length === 0) {
+        if (relatedRules.length === 0) {
             listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
             return;
         }
@@ -1112,13 +1151,26 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
             li.className = 'list-group-item d-flex justify-content-between align-items-center list-group-item-action';
             li.style.cursor = 'pointer';
             li.onclick = () => showRuleDetails(r.id, sourceView, targetId);
-
+            
             let icon = 'fa-arrow-right';
-            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
-            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+            if (r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if (r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+
+            let ruleDesc = '';
+            if (r.trigger.device_id === targetId) {
+                ruleDesc = `Gdy stan się zmieni, wykonaj akcję na ${getName(r.action.device_id)}`;
+            } else {
+                ruleDesc = `Wykonaj akcję po zdarzeniu z ${getName(r.trigger.device_id)}`;
+            }
+            if (r.trigger.type === 'time') {
+                 ruleDesc = `Wykonaj akcję o godzinie ${r.trigger.time}`;
+            }
 
             li.innerHTML = `
-                <span><i class="fa-solid ${icon} me-2"></i> ${r.name}</span>
+                <div>
+                    <span class="fw-bold">${r.name}</span><br>
+                    <small class="text-muted">${ruleDesc}</small>
+                </div>
                 <i class="fa-solid fa-chevron-right text-muted small"></i>
             `;
             listEl.appendChild(li);
