@@ -98,6 +98,8 @@ function showDeviceDetails(deviceId, source = 'devices') {
     }
 
     document.getElementById('view-devices').classList.add('d-none');
+    document.getElementById('view-groups').classList.add('d-none');
+    document.getElementById('view-group-details').classList.add('d-none');
     document.getElementById('view-device-details').classList.remove('d-none');
 }
 
@@ -458,6 +460,8 @@ async function showGroupDetails(groupId) {
             });
         }
 
+        document.getElementById('view-devices').classList.add('d-none');
+        document.getElementById('view-device-details').classList.add('d-none');
         document.getElementById('view-groups').classList.add('d-none');
         document.getElementById('view-group-details').classList.remove('d-none');
 
