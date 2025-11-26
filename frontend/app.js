@@ -68,7 +68,48 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         currentDetailId = deviceId;
         const device = currentDevices.find(d => d.id === deviceId);
         if(!device) return;
+        const backBtn = document.getElementById('btn-device-back');
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
 
+        if(source === 'group_details') {
+            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+            newBtn.onclick = function() {
+                if (currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
+                else { loadPage('groups'); }
+            };
+        } else {
+            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
+            newBtn.onclick = function() { loadPage('devices'); };
+        }
+
+        document.getElementById('detail-name').innerText = device.name;
+        document.getElementById('detail-id').innerText = device.id;
+        document.getElementById('detail-new-name-input').value = device.name;
+
+        const attrList = document.getElementById('detail-attributes');
+        attrList.innerHTML = '';
+        if(device.state) {
+            for (const [key, value] of Object.entries(device.state)) {
+                if(typeof value === 'object') continue;
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
+                attrList.appendChild(li);
+            }
+        }
+        const controls = document.getElementById('detail-controls');
+        controls.innerHTML = '';
+        if(device.type === 'socket' || device.type === 'light') {
+            const btn = document.createElement('button');
+            const isOn = device.state && device.state.state === 'ON';
+            btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
+            btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
+            btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
+            controls.appendChild(btn);
+        } else {
+            controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
+        }
         const groupsListEl = document.getElementById('device-groups-list');
         groupsListEl.innerHTML = '';
         const memberOfGroups = currentGroups.filter(g => g.members.includes(deviceId));
