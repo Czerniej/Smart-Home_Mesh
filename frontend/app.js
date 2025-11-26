@@ -632,7 +632,7 @@ async function fetchAndDisplayRules() {
 
 let cachedDevicesForRules = [];
 
-async function openAddRuleModal() {
+async function openAddRuleModal(preFillTargetId = null) {
     document.getElementById('rule-name').value = '';
     document.getElementById('rule-trigger-value').value = '';
     document.getElementById('rule-action-value').value = '';
@@ -641,9 +641,16 @@ async function openAddRuleModal() {
     modal.show();
 
     try {
-        const res = await fetch(`${API_URL}/devices`);
-        const data = await res.json();
-        cachedDevicesForRules = data.devices;
+        const [resDev, resGrp] = await Promise.all([
+            fetch(`${API_URL}/devices`),
+            fetch(`${API_URL}/groups`)
+        ]);
+        
+        const dataDev = await resDev.json();
+        const dataGrp = await resGrp.json();
+        
+        cachedDevicesForRules = dataDev.devices;
+        const groups = dataGrp.groups;
         
         const triggerSelect = document.getElementById('rule-trigger-device');
         const actionSelect = document.getElementById('rule-action-device');
@@ -655,15 +662,40 @@ async function openAddRuleModal() {
             const opt = document.createElement('option');
             opt.value = d.id;
             opt.innerText = `${d.name} (${d.type})`;
-            
-            triggerSelect.appendChild(opt.cloneNode(true));
-            actionSelect.appendChild(opt); 
+            triggerSelect.appendChild(opt);
         });
+        if(groups.length > 0) {
+            const grpHeader = document.createElement('optgroup');
+            grpHeader.label = "--- GRUPY ---";
+            groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.innerText = `[GRUPA] ${g.name}`;
+                grpHeader.appendChild(opt);
+            });
+            actionSelect.appendChild(grpHeader);
+        }
+        const devHeader = document.createElement('optgroup');
+        devHeader.label = "--- URZĄDZENIA ---";
+        cachedDevicesForRules.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.innerText = `${d.name} (${d.type})`;
+            devHeader.appendChild(opt);
+        });
+        actionSelect.appendChild(devHeader);
+        if(preFillTargetId) {
+            if(actionSelect.querySelector(`option[value="${preFillTargetId}"]`)) {
+                actionSelect.value = preFillTargetId;
+            } else if(triggerSelect.querySelector(`option[value="${preFillTargetId}"]`)) {
+                triggerSelect.value = preFillTargetId;
+            }
+        }
 
         updateRuleFormUI();
         updateTriggerAttributes();
 
-    } catch(e) { console.error("Błąd ładowania urządzeń do modala:", e); }
+    } catch(e) { console.error("Błąd ładowania danych do modala:", e); }
 }
 
 function updateRuleFormUI() {
@@ -790,9 +822,16 @@ async function showRuleDetails(ruleId) {
     if(!rule) return;
     currentEditRuleId = ruleId;
     try {
-        const res = await fetch(`${API_URL}/devices`);
-        const data = await res.json();
-        const devices = data.devices;
+        const [resDev, resGrp] = await Promise.all([
+            fetch(`${API_URL}/devices`),
+            fetch(`${API_URL}/groups`)
+        ]);
+        const dataDev = await resDev.json();
+        const dataGrp = await resGrp.json();
+
+        const devices = dataDev.devices;
+        const groups = dataGrp.groups;
+        cachedDevicesForRules = devices;
         const triggerSelect = document.getElementById('edit-trigger-device');
         const actionSelect = document.getElementById('edit-action-device');
         triggerSelect.innerHTML = '';
@@ -801,36 +840,56 @@ async function showRuleDetails(ruleId) {
             const opt = document.createElement('option');
             opt.value = d.id;
             opt.innerText = `${d.name} (${d.type})`;
-            triggerSelect.appendChild(opt.cloneNode(true));
-            actionSelect.appendChild(opt);
+            triggerSelect.appendChild(opt);
         });
-        cachedDevicesForRules = devices;
+        if(groups.length > 0) {
+            const grpHeader = document.createElement('optgroup');
+            grpHeader.label = "--- GRUPY ---";
+            groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.innerText = `[GRUPA] ${g.name}`;
+                grpHeader.appendChild(opt);
+            });
+            actionSelect.appendChild(grpHeader);
+        }
 
-    } catch(e) { console.error("Błąd pobierania urządzeń:", e); }
-
-    document.getElementById('edit-rule-id-display').innerText = rule.id;
-    document.getElementById('edit-rule-name').value = rule.name;
-    document.getElementById('edit-trigger-type').value = rule.trigger.type;
-    updateEditRuleUI();
-
-    if(rule.trigger.type === 'time') {
-        document.getElementById('edit-trigger-time').value = rule.trigger.time;
-    } else {
-        document.getElementById('edit-trigger-device').value = rule.trigger.device_id;
-        updateEditTriggerAttributes();
+        const devHeader = document.createElement('optgroup');
+        devHeader.label = "--- URZĄDZENIA ---";
+        devices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.innerText = `${d.name} (${d.type})`;
+            devHeader.appendChild(opt);
+        });
+        actionSelect.appendChild(devHeader);
+        document.getElementById('edit-rule-id-display').innerText = rule.id;
+        document.getElementById('edit-rule-name').value = rule.name;
         
-        document.getElementById('edit-trigger-key').value = rule.trigger.key;
-        document.getElementById('edit-trigger-op').value = rule.trigger.operator;
-        document.getElementById('edit-trigger-value').value = rule.trigger.value;
-    }
-    document.getElementById('edit-action-device').value = rule.action.device_id;
-    document.getElementById('edit-action-command').value = rule.action.command;
-    updateEditActionUI();
-    if(rule.action.value) {
-        document.getElementById('edit-action-value').value = rule.action.value;
-    }
-    document.getElementById('view-rules').classList.add('d-none');
-    document.getElementById('view-rule-details').classList.remove('d-none');
+        document.getElementById('edit-trigger-type').value = rule.trigger.type;
+        updateEditRuleUI();
+
+        if(rule.trigger.type === 'time') {
+            document.getElementById('edit-trigger-time').value = rule.trigger.time;
+        } else {
+            document.getElementById('edit-trigger-device').value = rule.trigger.device_id;
+            updateEditTriggerAttributes();
+            document.getElementById('edit-trigger-key').value = rule.trigger.key;
+            document.getElementById('edit-trigger-op').value = rule.trigger.operator;
+            document.getElementById('edit-trigger-value').value = rule.trigger.value;
+        }
+
+        document.getElementById('edit-action-device').value = rule.action.device_id;
+        document.getElementById('edit-action-command').value = rule.action.command;
+        updateEditActionUI();
+        if(rule.action.value) {
+            document.getElementById('edit-action-value').value = rule.action.value;
+        }
+
+        document.getElementById('view-rules').classList.add('d-none');
+        document.getElementById('view-rule-details').classList.remove('d-none');
+
+    } catch(e) { console.error("Błąd pobierania danych:", e); }
 }
 
 function updateEditRuleUI() {
