@@ -45,36 +45,44 @@ function loadPage(pageName) {
     }
 }
 
-function showDeviceDetails(deviceId) {
+function showDeviceDetails(deviceId, source = 'devices') {
     currentDetailId = deviceId;
     const device = currentDevices.find(d => d.id === deviceId);
     if(!device) return;
-
+    const backBtn = document.getElementById('btn-device-back');
+    if(source === 'group_details') {
+        backBtn.onclick = () => showGroupDetails(currentGroupDetails.id);
+        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+    } else {
+        backBtn.onclick = () => loadPage('devices');
+        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
+    }
     document.getElementById('detail-name').innerText = device.name;
     document.getElementById('detail-id').innerText = device.id;
     document.getElementById('detail-new-name-input').value = device.name;
 
     const attrList = document.getElementById('detail-attributes');
     attrList.innerHTML = '';
-    for (const [key, value] of Object.entries(device.state)) {
-        if(typeof value === 'object') continue;
-        const li = document.createElement('li');
-        li.className = 'list-group-item d-flex justify-content-between align-items-center';
-        li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
-        attrList.appendChild(li);
+    if(device.state) {
+        for (const [key, value] of Object.entries(device.state)) {
+            if(typeof value === 'object') continue;
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
+            attrList.appendChild(li);
+        }
     }
-
     const controls = document.getElementById('detail-controls');
     controls.innerHTML = '';
     if(device.type === 'socket' || device.type === 'light') {
         const btn = document.createElement('button');
-        const isOn = device.state.state === 'ON';
+        const isOn = device.state && device.state.state === 'ON';
         btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
         btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
-        btn.onclick = () => toggleDevice(device.id, device.state.state, true);
+        btn.onclick = () => toggleDevice(device.id, device.state?.state, true, source);
         controls.appendChild(btn);
     } else {
-        controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji.</p>';
+        controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
     }
 
     document.getElementById('view-devices').classList.add('d-none');
@@ -156,7 +164,7 @@ function createDeviceCard(device) {
                 </div>
                 
                 <!-- Tekst (Klikalny -> Szczegóły) -->
-                <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}')">
+                <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}', 'devices')">
                     <h5 class="card-title mb-0">${device.name}</h5>
                     <small class="text-muted">${state}</small>
                 </div>
@@ -174,7 +182,7 @@ function createDeviceCard(device) {
     return col;
 }
 
-async function toggleDevice(deviceId, currentState, refreshDetails = false) {
+async function toggleDevice(deviceId, currentState, refreshDetails = false, sourceView = 'devices') {
     const action = (currentState === 'ON') ? 'turn_off' : 'turn_on';
     try {
         await fetch(`${API_URL}/devices/action`, {
@@ -187,7 +195,7 @@ async function toggleDevice(deviceId, currentState, refreshDetails = false) {
             if(refreshDetails) {
                 fetch(`${API_URL}/devices`).then(r => r.json()).then(d => {
                     currentDevices = d.devices;
-                    showDeviceDetails(deviceId);
+                    showDeviceDetails(deviceId, sourceView);
                 });
             }
         }, 500);
@@ -459,7 +467,7 @@ function createGroupMemberCard(device, groupId) {
 
     col.innerHTML = `
         <div class="card h-100 shadow-sm border-0 bg-white device-in-group-card" 
-             onclick="showDeviceDetails('${device.id}')" 
+             onclick="showDeviceDetails('${device.id}', 'group_details')"
              style="cursor: pointer; transition: transform 0.2s;">
              
             <div class="card-body d-flex align-items-center p-2">
