@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
+import os
 
 from core.device_manager import DeviceManager, DEVICE_TYPE_MAPPING
 from core.rule_engine import RulesEngine
@@ -213,3 +214,20 @@ def delete_rule(rule_id: str):
         logger.info(f"API: Usunięto regułę ID: {rule_id}")
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Reguła nie znaleziona.")
+
+@app.get("/logs", summary="Pobiera ostatnie logi systemowe")
+def get_system_logs(lines: int = 50):
+    """
+    Zwraca ostatnie N linii z pliku logów.
+    """
+    if(not os.path.exists(config.LOG_FILE_PATH)):
+        return {"logs": ["Brak pliku logów."]}
+    
+    try:
+        with open(config.LOG_FILE_PATH, "r", encoding="utf-8") as f:
+            all_lines = f.readlines()
+            last_lines = all_lines[-lines:]
+            return {"logs": last_lines}
+    except Exception as e:
+        logger.error(f"Błąd odczytu logów: {e}")
+        return {"logs": [f"Błąd odczytu logów: {str(e)}"]}
