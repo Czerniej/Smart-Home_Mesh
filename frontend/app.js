@@ -23,29 +23,20 @@ function loadPage(pageName) {
     const groupsView = document.getElementById('view-groups-placeholder');
     if(groupsView) groupsView.remove();
 
-    if (pageName === 'devices') {
+    if(pageName === 'devices') {
         document.getElementById('view-devices').classList.remove('d-none');
         fetchAndDisplayDevices();
     } 
-    else if (pageName === 'groups') {
-        const html = `
-            <div id="view-groups-placeholder" class="text-center mt-5">
-                <i class="fa-solid fa-layer-group fa-4x text-muted mb-3"></i>
-                <h3>Zarządzanie Grupami</h3>
-                <p class="text-muted">Funkcjonalność w trakcie wdrażania.</p>
-                <button class="btn btn-primary" onclick="alert('Funkcja dostępna wkrótce!')">
-                    <i class="fa-solid fa-plus"></i> Utwórz nową grupę
-                </button>
-            </div>
-        `;
-        mainContainer.insertAdjacentHTML('beforeend', html);
-    } 
-    else if (pageName === 'map') {
+    else if(pageName === 'groups') {
+        document.getElementById('view-groups').classList.remove('d-none');
+        fetchAndDisplayGroups();
+    }
+    else if(pageName === 'map') {
         const host = window.location.hostname; 
         const iframeHtml = `<iframe src="http://${host}:8080/#/network" width="100%" height="800px" style="border:none; border-radius:10px;"></iframe>`;
         mainContainer.insertAdjacentHTML('beforeend', iframeHtml);
     } 
-    else if (pageName === 'logs') {
+    else if(pageName === 'logs') {
         document.getElementById('view-logs').classList.remove('d-none');
         fetchLogs();
     }
@@ -96,7 +87,7 @@ async function fetchAndDisplayDevices() {
         const listContainer = document.getElementById('devices-list');
         listContainer.innerHTML = '';
 
-        if (currentDevices.length === 0) {
+        if(currentDevices.length === 0) {
             listContainer.innerHTML = '<div class="col-12 text-center text-muted">Brak urządzeń.</div>';
             return;
         }
@@ -109,11 +100,11 @@ async function fetchAndDisplayDevices() {
             let colorClass = 'text-secondary';
             const state = device.state?.state || 'UNKNOWN';
 
-            if (device.type === 'socket') icon = 'fa-plug';
-            else if (device.type === 'light') icon = 'fa-lightbulb';
-            else if (device.type === 'sensor') icon = 'fa-temperature-half';
+            if(device.type === 'socket') icon = 'fa-plug';
+            else if(device.type === 'light') icon = 'fa-lightbulb';
+            else if(device.type === 'sensor') icon = 'fa-temperature-half';
 
-            if (state === 'ON') colorClass = 'text-warning';
+            if(state === 'ON') colorClass = 'text-warning';
 
             col.innerHTML = `
                 <div class="card h-100 device-card shadow-sm">
@@ -147,11 +138,11 @@ function createDeviceCard(device) {
     let colorClass = 'text-secondary';
     const state = device.state?.state || 'UNKNOWN';
 
-    if (device.type === 'socket') icon = 'fa-plug';
-    else if (device.type === 'light') icon = 'fa-lightbulb';
-    else if (device.type === 'sensor') icon = 'fa-temperature-half';
+    if(device.type === 'socket') icon = 'fa-plug';
+    else if(device.type === 'light') icon = 'fa-lightbulb';
+    else if(device.type === 'sensor') icon = 'fa-temperature-half';
 
-    if (state === 'ON') colorClass = 'text-warning';
+    if(state === 'ON') colorClass = 'text-warning';
 
     col.innerHTML = `
         <div class="card h-100 device-card shadow-sm">
@@ -248,7 +239,7 @@ async function startPairing() {
         const interval = setInterval(() => {
             timeLeft--;
             counterEl.innerText = timeLeft;
-            if (timeLeft <= 0) {
+            if(timeLeft <= 0) {
                 clearInterval(interval);
                 finishPairing();
             }
@@ -264,4 +255,145 @@ async function finishPairing() {
     document.getElementById('countdown').innerText = "60";
     fetchAndDisplayDevices();
     alert("Wyszukiwanie zakończone.");
+}
+
+async function fetchAndDisplayGroups() {
+    const listContainer = document.getElementById('groups-list');
+    listContainer.innerHTML = '<div class="spinner-border"></div>';
+
+    try {
+        const response = await fetch(`${API_URL}/groups`);
+        const data = await response.json();
+        const groups = data.groups;
+        listContainer.innerHTML = '';
+
+        if(groups.length === 0) {
+            listContainer.innerHTML = '<div class="col-12 text-center text-muted">Brak grup. Utwórz pierwszą.</div>';
+            return;
+        }
+
+        groups.forEach(group => {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4';
+            const count = group.members.length;
+
+            col.innerHTML = `
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">
+                                <i class="fa-solid fa-layer-group text-primary me-2"></i>
+                                ${group.name}
+                            </h5>
+                            <span class="badge bg-secondary">${count} urz.</span>
+                        </div>
+                        <p class="text-muted small">ID: ${group.id}</p>
+                        
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-success flex-grow-1" onclick="toggleGroup('${group.id}', 'turn_on')">ON</button>
+                            <button class="btn btn-danger flex-grow-1" onclick="toggleGroup('${group.id}', 'turn_off')">OFF</button>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm w-100 mt-2" onclick="deleteGroup('${group.id}')">
+                            <i class="fa-solid fa-trash"></i> Usuń grupę
+                        </button>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(col);
+        });
+
+    } catch (error) {
+        console.error(error);
+        listContainer.innerHTML = `<div class="alert alert-danger">Błąd: ${error}</div>`;
+    }
+}
+
+async function openAddGroupModal() {
+    const container = document.getElementById('group-devices-selection');
+    container.innerHTML = 'Pobieranie...';
+    
+    const modal = new bootstrap.Modal(document.getElementById('addGroupModal'));
+    modal.show();
+
+    try {
+        const res = await fetch(`${API_URL}/devices`);
+        const data = await res.json();
+        
+        container.innerHTML = '';
+        if(data.devices.length === 0) {
+            container.innerHTML = 'Brak urządzeń w systemie.';
+            return;
+        }
+
+        data.devices.forEach(dev => {
+            const label = document.createElement('label');
+            label.className = 'list-group-item d-flex gap-2';
+            label.innerHTML = `
+                <input class="form-check-input flex-shrink-0 device-select-checkbox" type="checkbox" value="${dev.id}">
+                <span>
+                    ${dev.name} 
+                    <small class="text-muted">(${dev.type})</small>
+                </span>
+            `;
+            container.appendChild(label);
+        });
+    } catch(e) {
+        container.innerText = "Błąd pobierania listy urządzeń.";
+    }
+}
+
+async function createGroup() {
+    const name = document.getElementById('new-group-name').value;
+    if(!name) return alert("Podaj nazwę grupy!");
+
+    const checkboxes = document.querySelectorAll('.device-select-checkbox:checked');
+    const members = Array.from(checkboxes).map(cb => cb.value);
+
+    if(members.length === 0) return alert("Wybierz przynajmniej jedno urządzenie.");
+
+    const groupId = 'group_' + name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.floor(Math.random()*1000);
+
+    try {
+        const res = await fetch(`${API_URL}/groups`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: groupId,
+                name: name,
+                members: members
+            })
+        });
+
+        if(res.ok) {
+            alert("Grupa utworzona!");
+            const modalEl = document.getElementById('addGroupModal');
+            bootstrap.Modal.getInstance(modalEl).hide();
+            fetchAndDisplayGroups();
+        } else {
+            alert("Błąd tworzenia grupy.");
+        }
+    } catch(e) { alert("Błąd: " + e); }
+}
+
+async function deleteGroup(groupId) {
+    if(confirm("Usunąć tę grupę?")) {
+        try {
+            await fetch(`${API_URL}/groups/${groupId}`, { method: 'DELETE' });
+            fetchAndDisplayGroups();
+        } catch(e) { alert("Błąd: " + e); }
+    }
+}
+
+async function toggleGroup(groupId, action) {
+    try {
+        await fetch(`${API_URL}/devices/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                device_id: groupId,
+                action: action
+            })
+        });
+        alert("Wysłano polecenie do grupy.");
+    } catch(e) { alert("Błąd: " + e); }
 }

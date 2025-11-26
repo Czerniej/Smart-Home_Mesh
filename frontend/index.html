@@ -106,6 +106,18 @@
             </div>
         </div>
 
+        <div id="view-groups" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Twoje Grupy</h2>
+                <button class="btn btn-primary" onclick="openAddGroupModal()">
+                    <i class="fa-solid fa-plus"></i> Utwórz Grupę
+                </button>
+            </div>
+            <div id="groups-list" class="row g-4">
+                <div class="col-12 text-center text-muted">Brak grup.</div>
+            </div>
+        </div>
+
         <div id="view-logs" class="d-none">
             <h2>Logi Systemowe</h2>
             <div class="bg-dark text-white p-3 rounded" style="height: 500px; overflow-y: scroll; font-family: monospace; white-space: pre-wrap;" id="logs-container">
@@ -135,6 +147,33 @@
                         <p class="text-muted">Zresetuj teraz swoje urządzenie Zigbee.</p>
                         <h2 id="countdown">60</h2>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nowa Grupa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa Grupy</label>
+                        <input type="text" class="form-control" id="new-group-name" placeholder="np. Salon">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Wybierz urządzenia</label>
+                        <div id="group-devices-selection" class="list-group">
+                            Ładowanie urządzeń...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="button" class="btn btn-primary" onclick="createGroup()">Utwórz</button>
                 </div>
             </div>
         </div>
