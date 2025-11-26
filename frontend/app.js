@@ -50,12 +50,22 @@ function showDeviceDetails(deviceId, source = 'devices') {
     const device = currentDevices.find(d => d.id === deviceId);
     if(!device) return;
     const backBtn = document.getElementById('btn-device-back');
+    const newBtn = backBtn.cloneNode(true);
+    backBtn.parentNode.replaceChild(newBtn, backBtn);
     if(source === 'group_details') {
-        backBtn.onclick = () => showGroupDetails(currentGroupDetails.id);
-        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+        newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+        newBtn.onclick = function() {
+            if (currentGroupDetails) {
+                showGroupDetails(currentGroupDetails.id);
+            } else {
+                loadPage('groups');
+            }
+        };
     } else {
-        backBtn.onclick = () => loadPage('devices');
-        backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
+        newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
+        newBtn.onclick = function() {
+            loadPage('devices');
+        };
     }
     document.getElementById('detail-name').innerText = device.name;
     document.getElementById('detail-id').innerText = device.id;
@@ -79,7 +89,9 @@ function showDeviceDetails(deviceId, source = 'devices') {
         const isOn = device.state && device.state.state === 'ON';
         btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
         btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
-        btn.onclick = () => toggleDevice(device.id, device.state?.state, true, source);
+        btn.onclick = function() {
+            toggleDevice(device.id, device.state?.state, true, source);
+        };
         controls.appendChild(btn);
     } else {
         controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
