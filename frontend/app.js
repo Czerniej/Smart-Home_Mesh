@@ -660,7 +660,7 @@ async function fetchAndDisplayRules() {
             if (dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
             
             const grp = allGroups.find(g => g.id === id);
-            if (grp) return `<span class="fw-bold text-success">[GRUPA] ${g.name}</span>`;
+            if (grp) return `<span class="fw-bold text-success">[GRUPA] ${grp.name}</span>`;
             
             return `<span class="text-muted">${id}</span>`;
         };
