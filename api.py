@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -164,7 +164,7 @@ def delete_group(group_id: str):
         return {"status": "success", "message": "Grupa usunięta."}
     raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
 
-@app.put("/groups/{group_id}/rename", summary="Zmienia nazwę grupy")
+@app.put("/groups/{group_id}/rename", summary="Zmienia nazwę grupy", status_code=status.HTTP_200_OK)
 def rename_group(group_id: str, request: RenameRequest):
     """
     Aktualizuje nazwę grupy o podanym ID.
