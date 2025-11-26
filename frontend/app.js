@@ -479,9 +479,9 @@ function createGroupMemberCard(device, groupId) {
 async function openAddMemberModal() {
     const container = document.getElementById('available-devices-list');
     container.innerHTML = '<div class="text-center p-3"><div class="spinner-border"></div></div>';
-    
-    const modal = new bootstrap.Modal(document.getElementById('addMemberModal'));
-    modal.show();
+    const modalEl = document.getElementById('addMemberModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show()
 
     try {
         const res = await fetch(`${API_URL}/devices`);
@@ -506,24 +506,31 @@ async function openAddMemberModal() {
                 </span>
                 <small class="text-muted">${dev.type}</small>
             `;
-            btn.onclick = () => addMemberToGroup(currentGroupDetails.id, dev.id, modal);
+            btn.onclick = () => addMemberToGroup(currentGroupDetails.id, dev.id);
             container.appendChild(btn);
         });
 
-    } catch(e) { container.innerText = "Błąd pobierania listy."; }
+    } catch(e) { console.error(e); container.innerText = "Błąd pobierania listy."; }
 }
 
-async function addMemberToGroup(groupId, deviceId, modalInstance) {
+async function addMemberToGroup(groupId, deviceId) {
+    console.log(`Próba dodania urządzenia ${deviceId} do grupy ${groupId}...`);
     try {
         const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'POST' });
         if(res.ok) {
-            modalInstance.hide();
+            console.log("Sukces! Zamykam modal i odświeżam.");
+            const modalEl = document.getElementById('addMemberModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if(modal) modal.hide();
             showGroupDetails(groupId);
         } else {
             const err = await res.json();
-            alert("Błąd dodawania: " + (err.detail || "Nieznany błąd"));
+            alert("Błąd dodawania: " + (err.detail || res.statusText));
         }
-    } catch(e) { alert("Błąd sieci: " + e); }
+    } catch(e) { 
+        console.error(e);
+        alert("Błąd sieci: " + e); 
+    }
 }
 
 async function removeMemberFromGroup(groupId, deviceId) {
