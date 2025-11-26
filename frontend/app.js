@@ -51,7 +51,7 @@ function loadPage(pageName) {
     }
 }
 
-function showDeviceDetails(deviceId, source = 'devices') {
+async function showDeviceDetails(deviceId, source = 'devices') {
     currentDetailId = deviceId;
     const device = currentDevices.find(d => d.id === deviceId);
     if(!device) return;
@@ -69,9 +69,7 @@ function showDeviceDetails(deviceId, source = 'devices') {
         };
     } else {
         newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
-        newBtn.onclick = function() {
-            loadPage('devices');
-        };
+        newBtn.onclick = function() { loadPage('devices'); };
     }
     document.getElementById('detail-name').innerText = device.name;
     document.getElementById('detail-id').innerText = device.id;
@@ -95,14 +93,13 @@ function showDeviceDetails(deviceId, source = 'devices') {
         const isOn = device.state && device.state.state === 'ON';
         btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
         btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
-        btn.onclick = function() {
-            toggleDevice(device.id, device.state?.state, true, source);
-        };
+        btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
         controls.appendChild(btn);
     } else {
         controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
     }
-
+    document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
+    await renderEmbeddedRules(deviceId, 'device-rules-list');
     document.getElementById('view-devices').classList.add('d-none');
     document.getElementById('view-groups').classList.add('d-none');
     document.getElementById('view-group-details').classList.add('d-none');
@@ -465,8 +462,8 @@ async function showGroupDetails(groupId) {
                 }
             });
         }
-
-        document.getElementById('view-devices').classList.add('d-none');
+        document.getElementById('btn-add-rule-group').onclick = () => openAddRuleModal(groupId);
+        await renderEmbeddedRules(groupId, 'group-rules-list');
         document.getElementById('view-device-details').classList.add('d-none');
         document.getElementById('view-groups').classList.add('d-none');
         document.getElementById('view-group-details').classList.remove('d-none');
