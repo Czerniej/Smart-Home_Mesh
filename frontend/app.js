@@ -500,7 +500,7 @@ async function showGroupDetails(groupId, sourceView = 'groups', sourceId = null)
 
         document.getElementById('g-detail-name').innerText = group.name;
         document.getElementById('g-detail-id').innerText = group.id;
-        document.getElementById('g-detail-new-name-input').value = group.name;
+
         document.getElementById('g-btn-on').onclick = () => toggleGroup(group.id, 'turn_on');
         document.getElementById('g-btn-off').onclick = () => toggleGroup(group.id, 'turn_off');
 
@@ -658,16 +658,16 @@ async function fetchAndDisplayRules() {
         const allGroups = dataGrp.groups || [];
         const getName = (id) => {
             const dev = allDevices.find(d => d.id === id);
-            if(dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
+            if (dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
             
             const grp = allGroups.find(g => g.id === id);
-            if(grp) return `<span class="fw-bold text-success">[GRUPA] ${grp.name}</span>`;
+            if (grp) return `<span class="fw-bold text-success">[GRUPA] ${grp.name}</span>`;
             
             return `<span class="text-muted">${id}</span>`;
         };
         
         container.innerHTML = '';
-        if(currentRules.length === 0) {
+        if (currentRules.length === 0) {
             container.innerHTML = '<div class="col-12 text-center text-muted mt-5"><h5>Brak reguł.</h5><p>Kliknij "Nowa Reguła", aby zautomatyzować dom.</p></div>';
             return;
         }
@@ -677,7 +677,7 @@ async function fetchAndDisplayRules() {
             col.className = 'col-12';
             
             let triggerDesc = '';
-            if(rule.trigger.type === 'time') {
+            if (rule.trigger.type === 'time') {
                 triggerDesc = `🕒 Godzina <b>${rule.trigger.time}</b>`;
             } else {
                 triggerDesc = `⚡ Gdy ${getName(rule.trigger.device_id)} ma <b>${rule.trigger.key}</b> ${rule.trigger.operator} <b>${rule.trigger.value}</b>`;
@@ -1113,17 +1113,17 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
     listEl.innerHTML = '<li class="list-group-item text-muted"><small>Ładowanie...</small></li>';
 
     try {
-        if(currentRules.length === 0) {
+        if (currentRules.length === 0) {
             const res = await fetch(`${API_URL}/rules`);
             const data = await res.json();
             currentRules = data.rules || [];
         }
-        if(currentDevices.length === 0) {
+        if (currentDevices.length === 0) {
             const res = await fetch(`${API_URL}/devices`);
             const data = await res.json();
             currentDevices = data.devices || [];
         }
-        if(currentGroups.length === 0) {
+        if (currentGroups.length === 0) {
             const res = await fetch(`${API_URL}/groups`);
             const data = await res.json();
             currentGroups = data.groups || [];
@@ -1131,9 +1131,9 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
 
         const getName = (id) => {
             const dev = currentDevices.find(d => d.id === id);
-            if(dev) return `<span class="fw-bold">${dev.name}</span>`;
+            if (dev) return `<span class="fw-bold">${dev.name}</span>`;
             const grp = currentGroups.find(g => g.id === id);
-            if(grp) return `<span class="fw-bold">[GRUPA] ${g.name}</span>`;
+            if (grp) return `<span class="fw-bold">[GRUPA] ${g.name}</span>`;
             return `<span class="text-muted">${id}</span>`;
         };
 
@@ -1143,7 +1143,7 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
         );
 
         listEl.innerHTML = '';
-        if(relatedRules.length === 0) {
+        if (relatedRules.length === 0) {
             listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
             return;
         }
@@ -1154,16 +1154,16 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
             li.onclick = () => showRuleDetails(r.id, sourceView, targetId);
             
             let icon = 'fa-arrow-right';
-            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
-            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+            if (r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if (r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
 
             let ruleDesc = '';
-            if(r.trigger.device_id === targetId) {
+            if (r.trigger.device_id === targetId) {
                 ruleDesc = `Gdy stan się zmieni, wykonaj akcję na ${getName(r.action.device_id)}`;
             } else {
                 ruleDesc = `Wykonaj akcję po zdarzeniu z ${getName(r.trigger.device_id)}`;
             }
-            if(r.trigger.type === 'time') {
+            if (r.trigger.type === 'time') {
                  ruleDesc = `Wykonaj akcję o godzinie ${r.trigger.time}`;
             }
 
@@ -1180,36 +1180,5 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
     } catch(e) { 
         console.error(e); 
         listEl.innerHTML = '<li class="list-group-item text-danger">Błąd ładowania reguł.</li>'; 
-    }
-}
-
-async function renameCurrentGroup() {
-    if(!currentGroupDetails || !currentGroupDetails.id) return;
-    const groupId = currentGroupDetails.id;
-    
-    const newName = document.getElementById('g-detail-new-name-input').value.trim();
-    if(!newName) return alert("Podaj nową nazwę dla grupy!");
-    if(currentGroups.some(g => g.name === newName && g.id !== groupId)) {
-        return alert("Błąd: Grupa o takiej nazwie już istnieje!");
-    }
-
-    if(confirm(`Czy na pewno zmienić nazwę grupy na "${newName}"?`)) {
-        try {
-            const res = await fetch(`${API_URL}/groups/${groupId}/rename`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_name: newName })
-            });
-
-            if(res.ok) {
-                alert("Nazwa grupy została zmieniona.");
-                loadPage('groups');
-            } else {
-                alert("Wystąpił błąd podczas zmiany nazwy.");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Błąd sieci: " + e);
-        }
     }
 }

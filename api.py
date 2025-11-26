@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -162,18 +162,6 @@ def delete_group(group_id: str):
 
         logger.info(f"API: Usunięto grupę ID: {group_id}")
         return {"status": "success", "message": "Grupa usunięta."}
-    raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
-
-@app.put("/groups/{group_id}/rename", summary="Zmienia nazwę grupy", status_code=status.HTTP_200_OK)
-def rename_group(group_id: str, request: RenameRequest):
-    """
-    Aktualizuje nazwę grupy o podanym ID.
-    """
-    if(not device_manager_instance):
-         raise HTTPException(status_code=503, detail="System niegotowy.")
-    if(device_manager_instance.rename_group(group_id, request.new_name)):
-        return {"status": "success", "message": "Nazwa grupy zaktualizowana."}
-    
     raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
 
 @app.post("/groups/{group_id}/devices/{device_id}", summary="Dodaje urządzenie do grupy")

@@ -241,17 +241,3 @@ class DeviceManager:
                 dev_type_str = new_device.__class__.__name__.replace("Device", "").lower()
                 self.db_manager.update_device_metadata(new_device.device_id, new_device.name, new_device.topic, dev_type_str)
                 logger.info(f"Zaktualizowano metadane urządzenia: {new_device.name}")
-
-    def rename_group(self, group_id: str, new_name: str) -> bool:
-        """
-        Zmienia nazwę grupy w pamięci i bazie danych.
-        """
-        with self._lock:
-            group = self.groups.get(group_id)
-            if(not group):
-                return False
-            group['name'] = new_name
-            self.db_manager.update_group_name(group_id, new_name)
-            
-            logger.info(f"Zmieniono nazwę grupy {group_id} na '{new_name}'")
-            return True
