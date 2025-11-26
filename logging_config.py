@@ -42,7 +42,7 @@ def setup_logging():
             # Logger główny
             '': { 
                 'handlers': ['console', 'file'],
-                'level': LOG_LEVEL,
+                'level': logging.INFO,
                 'propagate': True
             },
             # Logger Paho-MQTT
