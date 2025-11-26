@@ -192,7 +192,7 @@ def set_pairing(state: str):
          raise HTTPException(status_code=503, detail="System niegotowy.")
     
     is_enabled = (state.lower() == "true")
-    payload = {"permit_join": is_enabled}
+    payload = "true" if is_enabled else "false"
     mqtt_client_instance.publish("zigbee2mqtt/bridge/request/permit_join", payload)
     
     logger.info(f"API: Zmieniono tryb parowania Zigbee na: {is_enabled}")
