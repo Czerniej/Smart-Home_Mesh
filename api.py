@@ -109,10 +109,15 @@ def delete_device(device_id: str):
     """
     Usuwa urządzenie o podanym ID.
     """
-    if(not device_manager_instance):
+    if(not device_manager_instance or not mqtt_client_instance):
          raise HTTPException(status_code=503, detail="System niegotowy.")
+    mqtt_client_instance.publish(
+        "zigbee2mqtt/bridge/request/device/remove", 
+        {"id": device_id, "force": True}
+    )
+    logger.info(f"Wysłano żądanie usunięcia z Z2M dla: {device_id}")
     if(device_manager_instance.remove_device(device_id)):
-        logger.info(f"API: Usunięto urządzenie ID: {device_id}")
+        logger.info(f"API: Usunięto urządzenie ID: {device_id} z bazy lokalnej")
         return {"status": "success", "message": f"Urządzenie {device_id} usunięte."}
     raise HTTPException(status_code=404, detail="Urządzenie nie znalezione.")
 

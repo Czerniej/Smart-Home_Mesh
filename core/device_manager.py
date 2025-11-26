@@ -40,16 +40,20 @@ class DeviceManager:
 
     def remove_device(self, device_id: str) -> bool:
         """
-        Usuwa urządzenie z pamięci i z bazy danych.
+        Usuwa urządzenie z pamięci, bazy danych ORAZ ze wszystkich grup.
         """
         db_success = self.db_manager.remove_device(device_id)
         with self._lock:
             if(device_id in self.devices):
                 del self.devices[device_id]
                 self.device_attributes.pop(device_id, None)
-                logger.info(f"Usunięto urządzenie: {device_id}")
-                return True
+            for group in self.groups.values():
+                if(device_id in group['members']):
+                    group['members'].remove(device_id)
+                    self.db_manager.add_group(group['id'], group['name'], group['members'])
+                    logger.info(f"Usunięto sierotę {device_id} z grupy {group['id']}")
         if(db_success):
+            logger.info(f"Usunięto urządzenie: {device_id}")
             return True
         return False
 
