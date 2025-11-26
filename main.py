@@ -15,6 +15,7 @@ from core.devices_types import SocketDevice, SensorDevice, LightDevice
 from logging_config import setup_logging
 import config
 from api import app, setup_api 
+from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,12 @@ def on_message_callback(topic, payload):
 
 def run_api_server():
     logger.info(f"Uruchomienie serwera API na http://{config.API_HOST}:{config.API_PORT}")
+    if(os.path.exists(config.FRONTEND_DIR)):
+        app.mount("/", StaticFiles(directory=config.FRONTEND_DIR, html=True), name="frontend")
+        logger.info(f"Serwowanie aplikacji webowej z: {config.FRONTEND_DIR}")
+    else:
+        logger.warning(f"Nie znaleziono folderu frontend w: {config.FRONTEND_DIR}")
+        
     try:
         uvicorn.run(app, host=config.API_HOST, port=config.API_PORT, log_level="info")
     except Exception as e:
