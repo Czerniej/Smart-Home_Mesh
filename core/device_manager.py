@@ -173,6 +173,28 @@ class DeviceManager:
                     "type": device.__class__.__name__.replace("Device", "").lower(),
                     "topic": device.topic,
                     "state": device.state,
-                    "available_keys": self.device_attributes.get(device.device_id, []) # Dla frontendu
+                    "available_keys": self.device_attributes.get(device.device_id, [])
                 })
         return data
+    
+    def add_device_to_group(self, group_id: str, device_id: str) -> bool:
+        with self._lock:
+            group = self.groups.get(group_id)
+            if(not group): return False
+            if(device_id not in group['members']):
+                group['members'].append(device_id)
+                logger.info(f"Dodano urządzenie {device_id} do grupy {group_id}")
+                self.db_manager.add_group(group['id'], group['name'], group['members'])
+                return True
+            return True
+
+    def remove_device_from_group(self, group_id: str, device_id: str) -> bool:
+        with self._lock:
+            group = self.groups.get(group_id)
+            if(not group): return False
+            if(device_id in group['members']):
+                group['members'].remove(device_id)
+                logger.info(f"Usunięto urządzenie {device_id} z grupy {group_id}")
+                self.db_manager.add_group(group['id'], group['name'], group['members'])
+                return True
+            return False

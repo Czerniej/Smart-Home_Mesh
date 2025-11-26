@@ -118,6 +118,44 @@
             </div>
         </div>
 
+        <div id="view-group-details" class="d-none">
+            <button class="btn btn-outline-secondary mb-3" onclick="loadPage('groups')">
+                <i class="fa-solid fa-arrow-left"></i> Powrót do grup
+            </button>
+
+            <div class="card shadow mb-4">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fa-solid fa-layer-group me-2"></i> <span id="g-detail-name">Nazwa Grupy</span></h4>
+                    <span class="badge bg-secondary" id="g-detail-id">ID</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn btn-success flex-grow-1" id="g-btn-on">WŁĄCZ GRUPĘ</button>
+                        <button class="btn btn-danger flex-grow-1" id="g-btn-off">WYŁĄCZ GRUPĘ</button>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Urządzenia w grupie</h5>
+                        <button class="btn btn-sm btn-primary" onclick="openAddMemberModal()">
+                            <i class="fa-solid fa-plus"></i> Dodaj urządzenie
+                        </button>
+                    </div>
+                    
+                    <div id="group-members-list" class="row g-3">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">Logika i Automatyzacja Grupy</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Tu będą reguły działające dla całej grupy (np. harmonogram).</p>
+                </div>
+            </div>
+        </div>
+        
         <div id="view-logs" class="d-none">
             <h2>Logi Systemowe</h2>
             <div class="bg-dark text-white p-3 rounded" style="height: 500px; overflow-y: scroll; font-family: monospace; white-space: pre-wrap;" id="logs-container">
