@@ -259,8 +259,11 @@ async function toggleDevice(deviceId, currentState, refreshDetails = false, sour
 
 async function renameCurrentDevice() {
     if(!currentDetailId) return;
-    const newName = document.getElementById('detail-new-name-input').value;
+    const newName = document.getElementById('detail-new-name-input').value.trim();
     if(!newName) return alert("Podaj nazwę!");
+    if(currentDevices.some(d => d.name === newName && d.id !== currentDetailId)) {
+        return alert("Błąd: Urządzenie o takiej nazwie już istnieje!");
+    }
     if(confirm(`Zmienić nazwę na "${newName}"?`)) {
         try {
             await fetch(`${API_URL}/devices/${currentDetailId}/rename`, {
@@ -269,7 +272,7 @@ async function renameCurrentDevice() {
                 body: JSON.stringify({ new_name: newName })
             });
             alert("Wysłano żądanie zmiany nazwy.");
-            loadPage('devices');
+            setTimeout(() => loadPage('devices'), 1000);
         } catch(e) { console.error(e); }
     }
 }
@@ -410,8 +413,11 @@ async function openAddGroupModal() {
 }
 
 async function createGroup() {
-    const name = document.getElementById('new-group-name').value;
+    const name = document.getElementById('new-group-name').value.trim();
     if(!name) return alert("Podaj nazwę grupy!");
+    if(currentGroups.some(g => g.name === name)) {
+        return alert("Błąd: Grupa o takiej nazwie już istnieje!");
+    }
 
     const checkboxes = document.querySelectorAll('.device-select-checkbox:checked');
     const members = Array.from(checkboxes).map(cb => cb.value);
@@ -788,9 +794,11 @@ function updateActionValueUI() {
 }
 
 async function createRule() {
-    const name = document.getElementById('rule-name').value;
+    const name = document.getElementById('rule-name').value.trim();
     if(!name) return alert("Podaj nazwę reguły!");
-
+    if(currentRules.some(r => r.name === name)) {
+        return alert("Błąd: Reguła o takiej nazwie już istnieje!");
+    }
     const triggerType = document.getElementById('rule-trigger-type').value;
     
     const ruleId = 'rule_' + Date.now();
@@ -1017,7 +1025,11 @@ function updateEditActionUI() {
 async function saveRuleChanges() {
     if(!currentEditRuleId) return;
     
-    const name = document.getElementById('edit-rule-name').value;
+    const name = document.getElementById('edit-rule-name').value.trim();
+    if(!name) return alert("Podaj nazwę reguły!");
+    if(currentRules.some(r => r.name === name && r.id !== currentEditRuleId)) {
+        return alert("Błąd: Inna reguła ma już taką nazwę!");
+    }
     const triggerType = document.getElementById('edit-trigger-type').value;
     
     let trigger = {};
