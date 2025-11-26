@@ -1,6 +1,8 @@
 const API_URL = "";
 let currentDetailId = null;
 let currentGroupDetails = null;
+let currentRules = []; 
+let currentEditRuleId = null;
 let currentDevices = [];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,6 +18,7 @@ function loadPage(pageName) {
     document.getElementById('view-device-details').classList.add('d-none');
     document.getElementById('view-groups').classList.add('d-none');
     document.getElementById('view-group-details').classList.add('d-none');
+    document.getElementById('view-rule-details').classList.add('d-none');
     document.getElementById('view-logs').classList.add('d-none');
     
     const rulesView = document.getElementById('view-rules');
@@ -590,15 +593,15 @@ async function fetchAndDisplayRules() {
     try {
         const res = await fetch(`${API_URL}/rules`);
         const data = await res.json();
-        const rules = data.rules;
+        currentRules = data.rules;
         
         container.innerHTML = '';
-        if(rules.length === 0) {
+        if(currentRules.length === 0) {
             container.innerHTML = '<div class="col-12 text-center text-muted mt-5"><h5>Brak reguł.</h5><p>Kliknij "Nowa Reguła", aby zautomatyzować dom.</p></div>';
             return;
         }
 
-        rules.forEach(rule => {
+        currentRules.forEach(rule => {
             const col = document.createElement('div');
             col.className = 'col-12';
             
@@ -612,26 +615,19 @@ async function fetchAndDisplayRules() {
             const actionDesc = `▶️ Wykonaj <b>${rule.action.command}</b> na <b>${rule.action.device_id}</b>`;
 
             col.innerHTML = `
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="card-title mb-1">${rule.name}</h5>
-                            <p class="card-text mb-0 text-muted">
-                                ${triggerDesc} <br> ${actionDesc}
-                            </p>
-                        </div>
-                        <button class="btn btn-outline-danger" onclick="deleteRule('${rule.id}')">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                <div class="card shadow-sm rule-card" onclick="showRuleDetails('${rule.id}')" style="cursor: pointer;">
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">${rule.name}</h5>
+                        <p class="card-text mb-0 text-muted">
+                            ${triggerDesc} <br> ${actionDesc}
+                        </p>
                     </div>
                 </div>
             `;
             container.appendChild(col);
         });
 
-    } catch(e) {
-        container.innerHTML = `<div class="alert alert-danger">Błąd: ${e}</div>`;
-    }
+    } catch(e) { container.innerHTML = `<div class="alert alert-danger">Błąd: ${e}</div>`; }
 }
 
 let cachedDevicesForRules = [];
@@ -785,6 +781,154 @@ async function deleteRule(ruleId) {
         try {
             await fetch(`${API_URL}/rules/${ruleId}`, { method: 'DELETE' });
             fetchAndDisplayRules();
+        } catch(e) { alert("Błąd: " + e); }
+    }
+}
+
+async function showRuleDetails(ruleId) {
+    const rule = currentRules.find(r => r.id === ruleId);
+    if(!rule) return;
+    currentEditRuleId = ruleId;
+    try {
+        const res = await fetch(`${API_URL}/devices`);
+        const data = await res.json();
+        const devices = data.devices;
+        const triggerSelect = document.getElementById('edit-trigger-device');
+        const actionSelect = document.getElementById('edit-action-device');
+        triggerSelect.innerHTML = '';
+        actionSelect.innerHTML = '';
+        devices.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.innerText = `${d.name} (${d.type})`;
+            triggerSelect.appendChild(opt.cloneNode(true));
+            actionSelect.appendChild(opt);
+        });
+        cachedDevicesForRules = devices;
+
+    } catch(e) { console.error("Błąd pobierania urządzeń:", e); }
+
+    document.getElementById('edit-rule-id-display').innerText = rule.id;
+    document.getElementById('edit-rule-name').value = rule.name;
+    document.getElementById('edit-trigger-type').value = rule.trigger.type;
+    updateEditRuleUI();
+
+    if(rule.trigger.type === 'time') {
+        document.getElementById('edit-trigger-time').value = rule.trigger.time;
+    } else {
+        document.getElementById('edit-trigger-device').value = rule.trigger.device_id;
+        updateEditTriggerAttributes();
+        
+        document.getElementById('edit-trigger-key').value = rule.trigger.key;
+        document.getElementById('edit-trigger-op').value = rule.trigger.operator;
+        document.getElementById('edit-trigger-value').value = rule.trigger.value;
+    }
+    document.getElementById('edit-action-device').value = rule.action.device_id;
+    document.getElementById('edit-action-command').value = rule.action.command;
+    updateEditActionUI();
+    if(rule.action.value) {
+        document.getElementById('edit-action-value').value = rule.action.value;
+    }
+    document.getElementById('view-rules').classList.add('d-none');
+    document.getElementById('view-rule-details').classList.remove('d-none');
+}
+
+function updateEditRuleUI() {
+    const type = document.getElementById('edit-trigger-type').value;
+    if(type === 'time') {
+        document.getElementById('edit-trigger-device-block').classList.add('d-none');
+        document.getElementById('edit-trigger-time-block').classList.remove('d-none');
+    } else {
+        document.getElementById('edit-trigger-device-block').classList.remove('d-none');
+        document.getElementById('edit-trigger-time-block').classList.add('d-none');
+    }
+}
+
+function updateEditTriggerAttributes() {
+    const deviceId = document.getElementById('edit-trigger-device').value;
+    const device = cachedDevicesForRules.find(d => d.id === deviceId);
+    const keySelect = document.getElementById('edit-trigger-key');
+    keySelect.innerHTML = '';
+
+    if(device && device.available_keys) {
+        const keys = new Set(['state', ...device.available_keys]);
+        keys.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k;
+            opt.innerText = k;
+            keySelect.appendChild(opt);
+        });
+    } else {
+        keySelect.innerHTML = '<option value="state">state</option>';
+    }
+}
+
+function updateEditActionUI() {
+    const cmd = document.getElementById('edit-action-command').value;
+    const block = document.getElementById('edit-action-val-block');
+    if(cmd === 'set_brightness') block.classList.remove('d-none');
+    else block.classList.add('d-none');
+}
+
+async function saveRuleChanges() {
+    if(!currentEditRuleId) return;
+    
+    const name = document.getElementById('edit-rule-name').value;
+    const triggerType = document.getElementById('edit-trigger-type').value;
+    
+    let trigger = {};
+    if(triggerType === 'time') {
+        trigger = { type: 'time', time: document.getElementById('edit-trigger-time').value };
+    } else {
+        trigger = {
+            type: 'state',
+            device_id: document.getElementById('edit-trigger-device').value,
+            key: document.getElementById('edit-trigger-key').value,
+            operator: document.getElementById('edit-trigger-op').value,
+            value: document.getElementById('edit-trigger-value').value
+        };
+        if(!isNaN(trigger.value) && trigger.value.trim() !== '') trigger.value = Number(trigger.value);
+    }
+
+    const actionCmd = document.getElementById('edit-action-command').value;
+    const actionValRaw = document.getElementById('edit-action-value').value;
+    
+    const action = {
+        device_id: document.getElementById('edit-action-device').value,
+        command: actionCmd,
+        value: (actionCmd === 'set_brightness') ? actionValRaw : null
+    };
+
+    const payload = {
+        id: currentEditRuleId,
+        name: name,
+        active: true,
+        trigger: trigger,
+        action: action
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/rules/${currentEditRuleId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        if(res.ok) {
+            alert("Zapisano zmiany!");
+            loadPage('rules');
+        } else {
+            alert("Błąd zapisu.");
+        }
+    } catch(e) { alert("Błąd: " + e); }
+}
+
+async function deleteCurrentRule() {
+    if(!currentEditRuleId) return;
+    if(confirm("Usunąć tę regułę trwale?")) {
+        try {
+            await fetch(`${API_URL}/rules/${currentEditRuleId}`, { method: 'DELETE' });
+            loadPage('rules');
         } catch(e) { alert("Błąd: " + e); }
     }
 }

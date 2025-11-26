@@ -179,6 +179,100 @@
         </div>
     </div>
 
+    <div id="view-rule-details" class="d-none">
+            <button class="btn btn-outline-secondary mb-3" onclick="loadPage('rules')">
+                <i class="fa-solid fa-arrow-left"></i> Powrót do Automatyzacji
+            </button>
+
+            <div class="card shadow">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Edycja Reguły</h4>
+                    <span class="badge bg-light text-dark" id="edit-rule-id-display">ID</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nazwa reguły</label>
+                        <input type="text" class="form-control" id="edit-rule-name">
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-primary fw-bold">JEŚLI (Wyzwalacz)</h6>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Typ</label>
+                                <select class="form-select" id="edit-trigger-type" onchange="updateEditRuleUI()">
+                                    <option value="device">Zmiana stanu urządzenia</option>
+                                    <option value="time">Godzina (Harmonogram)</option>
+                                </select>
+                            </div>
+                            <div id="edit-trigger-device-block">
+                                <div class="mb-3">
+                                    <label class="form-label">Urządzenie</label>
+                                    <select class="form-select" id="edit-trigger-device" onchange="updateEditTriggerAttributes()">
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label">Atrybut</label>
+                                        <select class="form-select" id="edit-trigger-key"></select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Operator</label>
+                                        <select class="form-select" id="edit-trigger-op">
+                                            <option value="eq">Równe (=)</option>
+                                            <option value="neq">Różne (!=)</option>
+                                            <option value="gt">Większe (>)</option>
+                                            <option value="lt">Mniejsze (<)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="form-label">Wartość</label>
+                                    <input type="text" class="form-control" id="edit-trigger-value">
+                                </div>
+                            </div>
+                            <div id="edit-trigger-time-block" class="d-none">
+                                <div class="mb-3">
+                                    <label class="form-label">Godzina</label>
+                                    <input type="time" class="form-control" id="edit-trigger-time">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success fw-bold">TO (Akcja)</h6>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Urządzenie docelowe</label>
+                                <select class="form-select" id="edit-action-device"></select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Komenda</label>
+                                <select class="form-select" id="edit-action-command" onchange="updateEditActionUI()">
+                                    <option value="turn_on">Włącz</option>
+                                    <option value="turn_off">Wyłącz</option>
+                                    <option value="set_brightness">Ustaw jasność</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 d-none" id="edit-action-val-block">
+                                <label class="form-label">Wartość dodatkowa</label>
+                                <input type="text" class="form-control" id="edit-action-value">
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="mt-4">
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-danger" onclick="deleteCurrentRule()">
+                            <i class="fa-solid fa-trash"></i> Usuń tę regułę
+                        </button>
+                        <button class="btn btn-success btn-lg" onclick="saveRuleChanges()">
+                            <i class="fa-solid fa-save"></i> Zapisz zmiany
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     <div class="modal fade" id="addDeviceModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">

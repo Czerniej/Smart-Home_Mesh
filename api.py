@@ -233,6 +233,22 @@ def add_rule(rule: RuleModel):
         return {"status": "success", "id": rule.id}
     raise HTTPException(status_code=409, detail="Reguła już istnieje.")
 
+@app.put("/rules/{rule_id}", summary="Aktualizuje regułę")
+def update_rule(rule_id: str, rule: RuleModel):
+    """
+    Aktualizuje istniejącą regułę (usuwa starą i dodaje nową z tym samym ID).
+    """
+    if(not rules_engine_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    rules_engine_instance.remove_rule(rule_id)
+    rule_data = rule.model_dump()
+    rule_data['id'] = rule_id
+    if(rules_engine_instance.add_rule(rule_data)):
+        logger.info(f"API: Zaktualizowano regułę ID: {rule_id}")
+        return {"status": "success", "message": "Reguła zaktualizowana."}
+    
+    raise HTTPException(status_code=500, detail="Błąd podczas aktualizacji reguły.")
+
 @app.delete("/rules/{rule_id}", summary="Usuwa regułę")
 def delete_rule(rule_id: str):
     """
