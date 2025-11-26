@@ -1,0 +1,30 @@
+.device-card {
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.device-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-on { background-color: #28a745; box-shadow: 0 0 5px #28a745; }
+.status-off { background-color: #dc3545; }
+.status-unknown { background-color: #6c757d; }
+
+.device-icon {
+    font-size: 2.5rem;
+    color: #495057;
+}
+
+.device-on .device-icon {
+    color: #ffc107;
+}

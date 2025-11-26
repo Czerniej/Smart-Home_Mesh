@@ -1,1 +1,76 @@
-<h1>Witaj w Smart Home!</h1>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Mesh</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fa-solid fa-network-wired me-2"></i>Smart Home Mesh
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="loadPage('devices')">Urządzenia</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="loadPage('groups')">Grupy</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="loadPage('map')">Mapa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="loadPage('logs')">Logi</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" id="main-content">
+        <div class="text-center mt-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Ładowanie...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addDeviceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dodaj nowe urządzenie</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="pairing-status">
+                        <i class="fa-solid fa-wifi fa-3x text-muted mb-3"></i>
+                        <p>Kliknij przycisk poniżej, aby włączyć tryb parowania na 60 sekund.</p>
+                        <button class="btn btn-primary" onclick="startPairing()">Rozpocznij wyszukiwanie</button>
+                    </div>
+                    <div id="pairing-active" class="d-none">
+                        <div class="spinner-grow text-success mb-3" role="status"></div>
+                        <h5>Tryb parowania aktywny!</h5>
+                        <p class="text-muted">Zresetuj teraz swoje urządzenie Zigbee.</p>
+                        <h2 id="countdown">60</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
