@@ -2,6 +2,7 @@ const API_URL = "";
 let currentDetailId = null;
 let currentGroupDetails = null;
 let currentRules = []; 
+let currentGroups = [];
 let currentEditRuleId = null;
 let currentDevices = [];
 
@@ -64,7 +65,7 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         if(source === 'group_details') {
             newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
             newBtn.onclick = function() {
-                if (currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
+                if(currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
                 else { loadPage('groups'); }
             };
         } else {
@@ -301,6 +302,7 @@ async function fetchAndDisplayGroups() {
         const response = await fetch(`${API_URL}/groups`);
         const data = await response.json();
         const groups = data.groups;
+        currentGroups = groups;
         listContainer.innerHTML = '';
 
         if(groups.length === 0) {
@@ -326,7 +328,6 @@ async function fetchAndDisplayGroups() {
                         <p class="text-muted small">ID: ${group.id}</p>
                         
                         <div class="d-flex gap-2 mt-3">
-                            <!-- stopPropagation zapobiega wejściu w szczegóły przy kliknięciu ON/OFF -->
                             <button class="btn btn-success flex-grow-1" onclick="event.stopPropagation(); toggleGroup('${group.id}', 'turn_on')">ON</button>
                             <button class="btn btn-danger flex-grow-1" onclick="event.stopPropagation(); toggleGroup('${group.id}', 'turn_off')">OFF</button>
                         </div>
@@ -822,16 +823,17 @@ async function deleteRule(ruleId) {
     }
 }
 
-async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
+function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
     const rule = currentRules.find(r => r.id === ruleId);
-    if (!rule) return;
+    if(!rule) return;
     currentEditRuleId = ruleId;
     const backBtn = document.getElementById('btn-rule-back');
-    const newBackBtn = backBtn.cloneNode(true);
-    if (sourceView === 'group_details' && sourceId) {
+    const newBackBtn = backBtn.cloneNode(true); 
+    
+    if(sourceView === 'group_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
         newBackBtn.onclick = () => showGroupDetails(sourceId);
-    } else if (sourceView === 'device_details' && sourceId) {
+    } else if(sourceView === 'device_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do urządzenia';
         newBackBtn.onclick = () => showDeviceDetails(sourceId);
     } else {
@@ -839,76 +841,72 @@ async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
         newBackBtn.onclick = () => loadPage('rules');
     }
     backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+
+    const devices = currentDevices;
+    const groups = currentGroups;
     
-    try {
-        const [resDev, resGrp] = await Promise.all([
-            fetch(`${API_URL}/devices`),
-            fetch(`${API_URL}/groups`)
-        ]);
-        const dataDev = await resDev.json();
-        const dataGrp = await resGrp.json();
+    cachedDevicesForRules = devices;
 
-        const devices = dataDev.devices;
-        const groups = dataGrp.groups;
-        cachedDevicesForRules = devices;
-        const triggerSelect = document.getElementById('edit-trigger-device');
-        const actionSelect = document.getElementById('edit-action-device');
-        triggerSelect.innerHTML = '';
-        actionSelect.innerHTML = '';
-        devices.forEach(d => {
+    const triggerSelect = document.getElementById('edit-trigger-device');
+    const actionSelect = document.getElementById('edit-action-device');
+    triggerSelect.innerHTML = '';
+    actionSelect.innerHTML = '';
+
+    devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.innerText = `${d.name} (${d.type})`;
+        triggerSelect.appendChild(opt.cloneNode(true));
+    });
+
+    if(groups.length > 0) {
+        const grpHeader = document.createElement('optgroup');
+        grpHeader.label = "--- GRUPY ---";
+        groups.forEach(g => {
             const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.innerText = `${d.name} (${d.type})`;
-            triggerSelect.appendChild(opt.cloneNode(true));
+            opt.value = g.id;
+            opt.innerText = `[GRUPA] ${g.name}`;
+            grpHeader.appendChild(opt);
         });
-        if(groups.length > 0) {
-            const grpHeader = document.createElement('optgroup');
-            grpHeader.label = "--- GRUPY ---";
-            groups.forEach(g => {
-                const opt = document.createElement('option');
-                opt.value = g.id;
-                opt.innerText = `[GRUPA] ${g.name}`;
-                grpHeader.appendChild(opt);
-            });
-            actionSelect.appendChild(grpHeader);
-        }
+        actionSelect.appendChild(grpHeader);
+    }
 
-        const devHeader = document.createElement('optgroup');
-        devHeader.label = "--- URZĄDZENIA ---";
-        devices.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.innerText = `${d.name} (${d.type})`;
-            devHeader.appendChild(opt);
-        });
-        actionSelect.appendChild(devHeader);
-        document.getElementById('edit-rule-id-display').innerText = rule.id;
-        document.getElementById('edit-rule-name').value = rule.name;
-        
-        document.getElementById('edit-trigger-type').value = rule.trigger.type;
-        updateEditRuleUI();
+    const devHeader = document.createElement('optgroup');
+    devHeader.label = "--- URZĄDZENIA ---";
+    devices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.innerText = `${d.name} (${d.type})`;
+        devHeader.appendChild(opt);
+    });
+    actionSelect.appendChild(devHeader);
+    
+    document.getElementById('edit-rule-id-display').innerText = rule.id;
+    document.getElementById('edit-rule-name').value = rule.name;
+    document.getElementById('edit-trigger-type').value = rule.trigger.type;
+    updateEditRuleUI();
 
-        if(rule.trigger.type === 'time') {
-            document.getElementById('edit-trigger-time').value = rule.trigger.time;
-        } else {
-            document.getElementById('edit-trigger-device').value = rule.trigger.device_id;
-            updateEditTriggerAttributes();
-            document.getElementById('edit-trigger-key').value = rule.trigger.key;
-            document.getElementById('edit-trigger-op').value = rule.trigger.operator;
-            document.getElementById('edit-trigger-value').value = rule.trigger.value;
-        }
+    if(rule.trigger.type === 'time') {
+        document.getElementById('edit-trigger-time').value = rule.trigger.time;
+    } else {
+        document.getElementById('edit-trigger-device').value = rule.trigger.device_id;
+        updateEditTriggerAttributes();
+        document.getElementById('edit-trigger-key').value = rule.trigger.key;
+        document.getElementById('edit-trigger-op').value = rule.trigger.operator;
+        document.getElementById('edit-trigger-value').value = rule.trigger.value;
+    }
 
-        document.getElementById('edit-action-device').value = rule.action.device_id;
-        document.getElementById('edit-action-command').value = rule.action.command;
-        updateEditActionUI();
-        if(rule.action.value) {
-            document.getElementById('edit-action-value').value = rule.action.value;
-        }
+    document.getElementById('edit-action-device').value = rule.action.device_id;
+    document.getElementById('edit-action-command').value = rule.action.command;
+    updateEditActionUI();
+    if(rule.action.value) {
+        document.getElementById('edit-action-value').value = rule.action.value;
+    }
 
-        document.getElementById('view-rules').classList.add('d-none');
-        document.getElementById('view-rule-details').classList.remove('d-none');
-
-    } catch(e) { console.error("Błąd pobierania danych:", e); }
+    document.getElementById('view-rules').classList.add('d-none');
+    document.getElementById('view-device-details').classList.add('d-none');
+    document.getElementById('view-group-details').classList.add('d-none');
+    document.getElementById('view-rule-details').classList.remove('d-none');
 }
 
 function updateEditRuleUI() {
@@ -1025,7 +1023,7 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
         );
 
         listEl.innerHTML = '';
-        if (relatedRules.length === 0) {
+        if(relatedRules.length === 0) {
             listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
             return;
         }
@@ -1036,8 +1034,8 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
             li.onclick = () => showRuleDetails(r.id, sourceView, targetId);
 
             let icon = 'fa-arrow-right';
-            if (r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
-            if (r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
 
             li.innerHTML = `
                 <span><i class="fa-solid ${icon} me-2"></i> ${r.name}</span>
