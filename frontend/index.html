@@ -28,6 +28,9 @@
                         <a class="nav-link" href="#" onclick="loadPage('groups')">Grupy</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="loadPage('rules')">Automatyzacja</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" onclick="loadPage('map')">Mapa</a>
                     </li>
                     <li class="nav-item">
@@ -163,7 +166,17 @@
             </div>
             <button class="btn btn-secondary mt-2" onclick="fetchLogs()">Odśwież</button>
         </div>
-
+        <div id="view-rules" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Twoje Automatyzacje</h2>
+                <button class="btn btn-primary" onclick="openAddRuleModal()">
+                    <i class="fa-solid fa-plus"></i> Nowa Reguła
+                </button>
+            </div>
+            <div id="rules-list" class="row g-4">
+                <div class="col-12 text-center text-muted">Brak reguł.</div>
+            </div>
+        </div>
     </div>
 
     <div class="modal fade" id="addDeviceModal" tabindex="-1">
@@ -239,7 +252,103 @@
             </div>
         </div>
     </div>
-    
+    <div class="modal fade" id="addRuleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Kreator Reguł</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nazwa reguły</label>
+                        <input type="text" class="form-control" id="rule-name" placeholder="np. Włącz światło w korytarzu">
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-primary fw-bold"><i class="fa-solid fa-bolt me-2"></i>JEŚLI (Wyzwalacz)</h6>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Typ zdarzenia</label>
+                                <select class="form-select" id="rule-trigger-type" onchange="updateRuleFormUI()">
+                                    <option value="device">Zmiana stanu urządzenia</option>
+                                    <option value="time">Godzina (Harmonogram)</option>
+                                </select>
+                            </div>
+
+                            <div id="trigger-device-options">
+                                <div class="mb-3">
+                                    <label class="form-label">Urządzenie źródłowe</label>
+                                    <select class="form-select" id="rule-trigger-device" onchange="updateTriggerAttributes()">
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label">Atrybut</label>
+                                        <select class="form-select" id="rule-trigger-key">
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Operator</label>
+                                        <select class="form-select" id="rule-trigger-op">
+                                            <option value="eq">Równe (=)</option>
+                                            <option value="neq">Różne (!=)</option>
+                                            <option value="gt">Większe (>)</option>
+                                            <option value="lt">Mniejsze (<)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="form-label">Wartość</label>
+                                    <input type="text" class="form-control" id="rule-trigger-value" placeholder="np. ON, OFF, 50">
+                                    <small class="text-muted">Dla włącznika wpisz: ON lub OFF</small>
+                                </div>
+                            </div>
+
+                            <div id="trigger-time-options" class="d-none">
+                                <div class="mb-3">
+                                    <label class="form-label">Godzina wykonania</label>
+                                    <input type="time" class="form-control" id="rule-trigger-time">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-success fw-bold"><i class="fa-solid fa-play me-2"></i>TO (Akcja)</h6>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Urządzenie docelowe</label>
+                                <select class="form-select" id="rule-action-device">
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Komenda</label>
+                                <select class="form-select" id="rule-action-command" onchange="updateActionValueUI()">
+                                    <option value="turn_on">Włącz (Turn ON)</option>
+                                    <option value="turn_off">Wyłącz (Turn OFF)</option>
+                                    <option value="set_brightness">Ustaw jasność</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3 d-none" id="action-value-container">
+                                <label class="form-label">Wartość dodatkowa</label>
+                                <input type="text" class="form-control" id="rule-action-value" placeholder="np. 0-254">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="button" class="btn btn-primary" onclick="createRule()">Zapisz Regułę</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js?v=test1"></script>
 </body>
