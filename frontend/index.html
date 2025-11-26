@@ -39,11 +39,81 @@
     </nav>
 
     <div class="container" id="main-content">
-        <div class="text-center mt-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Ładowanie...</span>
+        
+        <div id="view-devices">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Twoje Urządzenia</h2>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                    <i class="fa-solid fa-plus"></i> Dodaj
+                </button>
+            </div>
+            <div id="devices-list" class="row g-4">
+                <div class="col-12 text-center"><div class="spinner-border"></div></div>
             </div>
         </div>
+
+        <div id="view-device-details" class="d-none">
+            <button class="btn btn-outline-secondary mb-3" onclick="loadPage('devices')">
+                <i class="fa-solid fa-arrow-left"></i> Powrót do listy
+            </button>
+            
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0" id="detail-name">Nazwa Urządzenia</h4>
+                    <span class="badge bg-light text-dark" id="detail-id">ID</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h5>Sterowanie</h5>
+                            <div id="detail-controls" class="mb-4">
+                            </div>
+                            
+                            <h5>Dane techniczne</h5>
+                            <ul class="list-group list-group-flush mb-3" id="detail-attributes">
+                            </ul>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5>Konfiguracja</h5>
+                            
+                            <label class="form-label">Zmiana nazwy</label>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="detail-new-name-input">
+                                <button class="btn btn-outline-primary" onclick="renameCurrentDevice()">Zapisz</button>
+                            </div>
+
+                            <hr>
+                            
+                            <label class="form-label text-danger">Strefa niebezpieczna</label>
+                            <div>
+                                <button class="btn btn-outline-danger w-100" onclick="deleteCurrentDevice()">
+                                    <i class="fa-solid fa-trash"></i> Usuń to urządzenie z systemu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Logika i Automatyzacja</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Tu wkrótce pojawi się edytor reguł.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-logs" class="d-none">
+            <h2>Logi Systemowe</h2>
+            <div class="bg-dark text-white p-3 rounded" style="height: 500px; overflow-y: scroll; font-family: monospace; white-space: pre-wrap;" id="logs-container">
+                Ładowanie...
+            </div>
+            <button class="btn btn-secondary mt-2" onclick="fetchLogs()">Odśwież</button>
+        </div>
+
     </div>
 
     <div class="modal fade" id="addDeviceModal" tabindex="-1">
