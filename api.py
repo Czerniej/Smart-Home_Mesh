@@ -7,7 +7,7 @@ import os
 
 from core.device_manager import DeviceManager, DEVICE_TYPE_MAPPING
 from core.rule_engine import RulesEngine
-from core.mqtt_client import MQTT_Client 
+from core.mqtt_client import MQTT_Client  
 import config
 
 logger = logging.getLogger(__name__)
@@ -158,6 +158,28 @@ def delete_group(group_id: str):
         logger.info(f"API: Usunięto grupę ID: {group_id}")
         return {"status": "success", "message": "Grupa usunięta."}
     raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
+
+@app.post("/groups/{group_id}/devices/{device_id}", summary="Dodaje urządzenie do grupy")
+def add_device_to_group(group_id: str, device_id: str):
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    
+    if(device_manager_instance.add_device_to_group(group_id, device_id)):
+        logger.info(f"API: Dodano urządzenie {device_id} do grupy {group_id}")
+        return {"status": "success", "message": "Urządzenie dodane do grupy."}
+    
+    raise HTTPException(status_code=404, detail="Grupa nie znaleziona lub błąd zapisu.")
+
+@app.delete("/groups/{group_id}/devices/{device_id}", summary="Usuwa urządzenie z grupy")
+def remove_device_from_group(group_id: str, device_id: str):
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    
+    if(device_manager_instance.remove_device_from_group(group_id, device_id)):
+        logger.info(f"API: Usunięto urządzenie {device_id} z grupy {group_id}")
+        return {"status": "success", "message": "Urządzenie usunięte z grupy."}
+    
+    raise HTTPException(status_code=404, detail="Grupa nie znaleziona lub urządzenie nie było w grupie.")
 
 @app.post("/system/pairing/{state}", summary="Włącza/Wyłącza parowanie")
 def set_pairing(state: str):

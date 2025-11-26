@@ -520,9 +520,10 @@ async function addMemberToGroup(groupId, deviceId, modalInstance) {
             modalInstance.hide();
             showGroupDetails(groupId);
         } else {
-            alert("Błąd dodawania do grupy.");
+            const err = await res.json();
+            alert("Błąd dodawania: " + (err.detail || "Nieznany błąd"));
         }
-    } catch(e) { alert("Błąd: " + e); }
+    } catch(e) { alert("Błąd sieci: " + e); }
 }
 
 async function removeMemberFromGroup(groupId, deviceId) {
@@ -530,9 +531,10 @@ async function removeMemberFromGroup(groupId, deviceId) {
     try {
         const res = await fetch(`${API_URL}/groups/${groupId}/devices/${deviceId}`, { method: 'DELETE' });
         if(res.ok) {
-            showGroupDetails(groupId);
+            showGroupDetails(groupId); 
         } else {
-            alert("Błąd usuwania z grupy.");
+            const err = await res.json();
+            alert("Błąd usuwania: " + (err.detail || "Nieznany błąd"));
         }
-    } catch(e) { alert("Błąd: " + e); }
+    } catch(e) { alert("Błąd sieci: " + e); }
 }
