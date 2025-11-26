@@ -145,12 +145,13 @@ async function showDeviceDetails(deviceId, source = 'devices') {
 }
 
 async function fetchAndDisplayDevices() {
+    const listContainer = document.getElementById('devices-list');
+    listContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
     try {
         const response = await fetch(`${API_URL}/devices`);
         const data = await response.json();
         currentDevices = data.devices;
         
-        const listContainer = document.getElementById('devices-list');
         listContainer.innerHTML = '';
 
         if(currentDevices.length === 0) {
@@ -193,7 +194,7 @@ async function fetchAndDisplayDevices() {
             `;
             listContainer.appendChild(col);
         });
-    } catch (error) { console.error("Błąd:", error); }
+    } catch (error) { console.error("Błąd:", error); listContainer.innerHTML = '<div class="alert alert-danger">Nie udało się załadować urządzeń.</div>';}
 }
 
 function createDeviceCard(device) {

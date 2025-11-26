@@ -46,9 +46,14 @@
         <div id="view-devices">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Twoje Urządzenia</h2>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
-                    <i class="fa-solid fa-plus"></i> Dodaj
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" onclick="fetchAndDisplayDevices()">
+                        <i class="fa-solid fa-sync"></i> Odśwież
+                    </button>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                        <i class="fa-solid fa-plus"></i> Dodaj
+                    </button>
+                </div>
             </div>
             <div id="devices-list" class="row g-4">
                 <div class="col-12 text-center"><div class="spinner-border"></div></div>
