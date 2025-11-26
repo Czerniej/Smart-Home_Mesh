@@ -54,12 +54,12 @@ function loadPage(pageName) {
 
 async function showDeviceDetails(deviceId, source = 'devices') {
     try {
-        if (currentDevices.length === 0) {
+        if(currentDevices.length === 0) {
             const res = await fetch(`${API_URL}/devices`);
             const data = await res.json();
             currentDevices = data.devices || [];
         }
-        if (currentGroups.length === 0) {
+        if(currentGroups.length === 0) {
             const res = await fetch(`${API_URL}/groups`);
             const data = await res.json();
             currentGroups = data.groups || [];
@@ -75,7 +75,7 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         if(source === 'group_details') {
             newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
             newBtn.onclick = function() {
-                if (currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
+                if(currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
                 else { loadPage('groups'); }
             };
         } else {
@@ -114,12 +114,12 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         groupsListEl.innerHTML = '';
         const memberOfGroups = currentGroups.filter(g => g.members.includes(deviceId));
 
-        if (memberOfGroups.length > 0) {
+        if(memberOfGroups.length > 0) {
             memberOfGroups.forEach(group => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
                 li.style.cursor = 'pointer';
-                li.onclick = () => showGroupDetails(group.id);
+                li.onclick = () => showGroupDetails(group.id, 'device_details', deviceId);
                 li.innerHTML = `
                     <span><i class="fa-solid fa-layer-group me-2 text-primary"></i>${group.name}</span>
                     <i class="fa-solid fa-chevron-right text-muted small"></i>
@@ -131,7 +131,7 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         }
 
         document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
-        
+
         await renderEmbeddedRules(deviceId, 'device-rules-list', 'device_details');
 
         document.getElementById('view-devices').classList.add('d-none');
@@ -465,7 +465,7 @@ async function toggleGroup(groupId, action) {
     } catch(e) { alert("Błąd: " + e); }
 }
 
-async function showGroupDetails(groupId) {
+async function showGroupDetails(groupId, sourceView = 'groups', sourceId = null) {
     try {
         const [resGroups, resDevices] = await Promise.all([
             fetch(`${API_URL}/groups`),
@@ -479,6 +479,17 @@ async function showGroupDetails(groupId) {
 
         currentGroupDetails = group;
         const allDevices = dataDevices.devices;
+        const backBtn = document.getElementById('btn-group-back');
+        const newBackBtn = backBtn.cloneNode(true);
+
+        if(sourceView === 'device_details' && sourceId) {
+            newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do urządzenia';
+            newBackBtn.onclick = () => showDeviceDetails(sourceId);
+        } else {
+            newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grup';
+            newBackBtn.onclick = () => loadPage('groups');
+        }
+        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
 
         document.getElementById('g-detail-name').innerText = group.name;
         document.getElementById('g-detail-id').innerText = group.id;
@@ -854,18 +865,18 @@ async function deleteRule(ruleId) {
 
 async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
     try {
-        if (currentRules.length === 0) {
+        if(currentRules.length === 0) {
             console.log("Cache reguł jest pusty. Pobieranie danych...");
             const res = await fetch(`${API_URL}/rules`);
             const data = await res.json();
             currentRules = data.rules || [];
         }
-        if (currentDevices.length === 0) {
+        if(currentDevices.length === 0) {
             const res = await fetch(`${API_URL}/devices`);
             const data = await res.json();
             currentDevices = data.devices || [];
         }
-        if (currentGroups.length === 0) {
+        if(currentGroups.length === 0) {
             const res = await fetch(`${API_URL}/groups`);
             const data = await res.json();
             currentGroups = data.groups || [];
@@ -876,7 +887,7 @@ async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
         return;
     }
     const rule = currentRules.find(r => r.id === ruleId);
-    if (!rule) {
+    if(!rule) {
         alert("Nie znaleziono reguły. Mogła zostać usunięta.");
         loadPage('rules');
         return;
@@ -887,10 +898,10 @@ async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
     const backBtn = document.getElementById('btn-rule-back');
     const newBackBtn = backBtn.cloneNode(true); 
     
-    if (sourceView === 'group_details' && sourceId) {
+    if(sourceView === 'group_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
         newBackBtn.onclick = () => showGroupDetails(sourceId);
-    } else if (sourceView === 'device_details' && sourceId) {
+    } else if(sourceView === 'device_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do urządzenia';
         newBackBtn.onclick = () => showDeviceDetails(sourceId);
     } else {
