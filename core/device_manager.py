@@ -210,3 +210,34 @@ class DeviceManager:
                 self.db_manager.add_group(group['id'], group['name'], group['members'])
                 return True
             return False
+        
+    def update_or_create_device(self, new_device: BaseDevice):
+        """
+        Dodaje urządzenie lub aktualizuje je, jeśli już istnieje (w tym zmianę typu).
+        """
+        with self._lock:
+            existing_device = self.devices.get(new_device.device_id)
+            
+            if(not existing_device):
+                self.devices[new_device.device_id] = new_device
+                self.device_attributes[new_device.device_id] = []
+                self.save_device_to_db(new_device, save_config=True)
+                logger.info(f"Dodano nowe urządzenie: {new_device.name}")
+                return
+            needs_update = False
+            
+            if(type(existing_device) != type(new_device)):
+                logger.info(f"Zmiana typu urządzenia {new_device.name}: {type(existing_device).__name__} -> {type(new_device).__name__}")
+                new_device.state = existing_device.state
+                self.devices[new_device.device_id] = new_device
+                needs_update = True
+            
+            if(existing_device.name != new_device.name or existing_device.topic != new_device.topic):
+                existing_device.name = new_device.name
+                existing_device.topic = new_device.topic
+                needs_update = True
+                
+            if(needs_update):
+                dev_type_str = new_device.__class__.__name__.replace("Device", "").lower()
+                self.db_manager.update_device_metadata(new_device.device_id, new_device.name, new_device.topic, dev_type_str)
+                logger.info(f"Zaktualizowano metadane urządzenia: {new_device.name}")

@@ -184,3 +184,13 @@ class DatabaseManager:
         """
         cursor = self._execute_query("DELETE FROM rules WHERE id = ?", (rule_id,))
         return cursor.rowcount > 0
+    
+    def update_device_metadata(self, device_id: str, name: str, topic: str, dev_type: str):
+        """
+        Aktualizuje nazwę, temat MQTT oraz typ urządzenia.
+        """
+        self._execute_query("""
+            UPDATE devices 
+            SET name = ?, topic = ?, type = ? 
+            WHERE id = ?
+        """, (name, topic, dev_type, device_id))

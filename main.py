@@ -59,7 +59,7 @@ def on_message_callback(topic, payload):
         rules_engine.evaluate_state_change_rules(device.device_id) 
         return
     if(topic == "zigbee2mqtt/bridge/devices"):
-        logger.info("Odebrano listę urządzeń z Zigbee2MQTT. Aktualizacja bazy...")
+        logger.info("Odebrano listę urządzeń z Zigbee2MQTT. Synchronizacja...")
         if(isinstance(payload, list)):
             for dev_data in payload:
                 if(dev_data.get("type") == "Coordinator"):
@@ -73,13 +73,16 @@ def on_message_callback(topic, payload):
                     name=friendly_name,
                     topic=f"zigbee2mqtt/{friendly_name}"
                 )
-                device_manager.add_device(new_device)
-        logger.info("Zakończono synchronizację urządzeń z Zigbee2MQTT.")
+                device_manager.update_or_create_device(new_device)
+        logger.info("Zakończono synchronizację urządzeń.")
     elif(topic == "zigbee2mqtt/bridge/event"):
         event_type = payload.get("type")
         if(event_type == "device_rename"):
-            logger.info("Wykryto zmianę nazwy w Z2M. Prośba o listę urządzeń...")
-            pass
+            data = payload.get("data", {})
+            old_name = data.get("from")
+            new_name = data.get("to")
+            logger.info(f"Wykryto zmianę nazwy w Z2M: {old_name} -> {new_name}. Żądam odświeżenia listy...")
+            mqtt_client.publish("zigbee2mqtt/bridge/request/devices/get", {})
 
 def run_api_server():
     logger.info(f"Uruchomienie serwera API na http://{config.API_HOST}:{config.API_PORT}")
@@ -88,7 +91,7 @@ def run_api_server():
         logger.info(f"Serwowanie aplikacji webowej z: {config.FRONTEND_DIR}")
     else:
         logger.warning(f"Nie znaleziono folderu frontend w: {config.FRONTEND_DIR}")
-        
+
     try:
         uvicorn.run(app, host=config.API_HOST, port=config.API_PORT, log_level="info")
     except Exception as e:
