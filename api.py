@@ -164,6 +164,18 @@ def delete_group(group_id: str):
         return {"status": "success", "message": "Grupa usunięta."}
     raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
 
+@app.put("/groups/{group_id}/rename", summary="Zmienia nazwę grupy")
+def rename_group(group_id: str, request: RenameRequest):
+    """
+    Aktualizuje nazwę grupy o podanym ID.
+    """
+    if(not device_manager_instance):
+         raise HTTPException(status_code=503, detail="System niegotowy.")
+    if(device_manager_instance.rename_group(group_id, request.new_name)):
+        return {"status": "success", "message": "Nazwa grupy zaktualizowana."}
+    
+    raise HTTPException(status_code=404, detail="Grupa nie znaleziona.")
+
 @app.post("/groups/{group_id}/devices/{device_id}", summary="Dodaje urządzenie do grupy")
 def add_device_to_group(group_id: str, device_id: str):
     if(not device_manager_instance):

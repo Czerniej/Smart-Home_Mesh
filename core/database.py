@@ -194,3 +194,9 @@ class DatabaseManager:
             SET name = ?, topic = ?, type = ? 
             WHERE id = ?
         """, (name, topic, dev_type, device_id))
+
+        def update_group_name(self, group_id: str, new_name: str):
+            """
+            Aktualizuje nazwę istniejącej grupy.
+            """
+            self._execute_query("UPDATE groups SET name = ? WHERE id = ?", (new_name, group_id))
