@@ -19,7 +19,7 @@ function loadPage(pageName) {
         container.innerHTML = '<h2>Grupy</h2><p>Tutaj będzie zarządzanie grupami.</p>';
     } else if (pageName === 'map') {
         const host = window.location.hostname; 
-        container.innerHTML = `<iframe src="http://${host}:8080/#/map" width="100%" height="800px" style="border:none; border-radius:10px;"></iframe>`;
+        container.innerHTML = `<iframe src="http://${host}:8080/#/network" width="100%" height="800px" style="border:none; border-radius:10px;"></iframe>`;
     } else if (pageName === 'logs') {
         container.innerHTML = '<h2>Logi systemowe</h2><pre class="bg-dark text-white p-3 rounded">Ładowanie...</pre>';
     }
