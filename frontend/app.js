@@ -54,51 +54,39 @@ function loadPage(pageName) {
 
 async function showDeviceDetails(deviceId, source = 'devices') {
     try {
+        if (currentDevices.length === 0) {
+            const res = await fetch(`${API_URL}/devices`);
+            const data = await res.json();
+            currentDevices = data.devices || [];
+        }
+        if (currentGroups.length === 0) {
+            const res = await fetch(`${API_URL}/groups`);
+            const data = await res.json();
+            currentGroups = data.groups || [];
+        }
+
         currentDetailId = deviceId;
         const device = currentDevices.find(d => d.id === deviceId);
         if(!device) return;
 
-        const backBtn = document.getElementById('btn-device-back');
-        const newBtn = backBtn.cloneNode(true);
-        backBtn.parentNode.replaceChild(newBtn, backBtn);
+        const groupsListEl = document.getElementById('device-groups-list');
+        groupsListEl.innerHTML = '';
+        const memberOfGroups = currentGroups.filter(g => g.members.includes(deviceId));
 
-        if(source === 'group_details') {
-            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
-            newBtn.onclick = function() {
-                if(currentGroupDetails) { showGroupDetails(currentGroupDetails.id); } 
-                else { loadPage('groups'); }
-            };
-        } else {
-            newBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do listy';
-            newBtn.onclick = function() { loadPage('devices'); };
-        }
-
-        document.getElementById('detail-name').innerText = device.name;
-        document.getElementById('detail-id').innerText = device.id;
-        document.getElementById('detail-new-name-input').value = device.name;
-
-        const attrList = document.getElementById('detail-attributes');
-        attrList.innerHTML = '';
-        if(device.state) {
-            for (const [key, value] of Object.entries(device.state)) {
-                if(typeof value === 'object') continue;
+        if (memberOfGroups.length > 0) {
+            memberOfGroups.forEach(group => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                li.innerHTML = `${key} <span class="badge bg-secondary rounded-pill">${value}</span>`;
-                attrList.appendChild(li);
-            }
-        }
-        const controls = document.getElementById('detail-controls');
-        controls.innerHTML = '';
-        if(device.type === 'socket' || device.type === 'light') {
-            const btn = document.createElement('button');
-            const isOn = device.state && device.state.state === 'ON';
-            btn.className = `btn w-100 btn-lg ${isOn ? 'btn-danger' : 'btn-success'}`;
-            btn.innerText = isOn ? 'WYŁĄCZ' : 'WŁĄCZ';
-            btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
-            controls.appendChild(btn);
+                li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                li.style.cursor = 'pointer';
+                li.onclick = () => showGroupDetails(group.id);
+                li.innerHTML = `
+                    <span><i class="fa-solid fa-layer-group me-2 text-primary"></i>${group.name}</span>
+                    <i class="fa-solid fa-chevron-right text-muted small"></i>
+                `;
+                groupsListEl.appendChild(li);
+            });
         } else {
-            controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
+            groupsListEl.innerHTML = '<li class="list-group-item text-muted"><small>Urządzenie nie należy do żadnej grupy.</small></li>';
         }
 
         document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
