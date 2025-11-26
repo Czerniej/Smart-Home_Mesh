@@ -823,17 +823,45 @@ async function deleteRule(ruleId) {
     }
 }
 
-function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
+async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
+    try {
+        if (currentRules.length === 0) {
+            console.log("Cache reguł jest pusty. Pobieranie danych...");
+            const res = await fetch(`${API_URL}/rules`);
+            const data = await res.json();
+            currentRules = data.rules || [];
+        }
+        if (currentDevices.length === 0) {
+            const res = await fetch(`${API_URL}/devices`);
+            const data = await res.json();
+            currentDevices = data.devices || [];
+        }
+        if (currentGroups.length === 0) {
+            const res = await fetch(`${API_URL}/groups`);
+            const data = await res.json();
+            currentGroups = data.groups || [];
+        }
+    } catch(e) {
+        console.error("Krytyczny błąd: nie udało się pobrać danych do edytora reguł.", e);
+        alert("Błąd: Nie można załadować danych. Sprawdź połączenie z serwerem.");
+        return;
+    }
     const rule = currentRules.find(r => r.id === ruleId);
-    if(!rule) return;
+    if (!rule) {
+        alert("Nie znaleziono reguły. Mogła zostać usunięta.");
+        loadPage('rules');
+        return;
+    }
+
     currentEditRuleId = ruleId;
+
     const backBtn = document.getElementById('btn-rule-back');
     const newBackBtn = backBtn.cloneNode(true); 
     
-    if(sourceView === 'group_details' && sourceId) {
+    if (sourceView === 'group_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
         newBackBtn.onclick = () => showGroupDetails(sourceId);
-    } else if(sourceView === 'device_details' && sourceId) {
+    } else if (sourceView === 'device_details' && sourceId) {
         newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do urządzenia';
         newBackBtn.onclick = () => showDeviceDetails(sourceId);
     } else {
