@@ -75,10 +75,6 @@
                             <h5>Dane techniczne</h5>
                             <ul class="list-group list-group-flush mb-3" id="detail-attributes">
                             </ul>
-
-                            <h5 class="mt-4">Przynależność do grup</h5>
-                            <ul class="list-group list-group-flush" id="device-groups-list">
-                            </ul>
                         </div>
 
                         <div class="col-md-6">
@@ -100,6 +96,16 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Przynależność do grup</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group" id="device-groups-list">
+                    </ul>
                 </div>
             </div>
             
@@ -215,7 +221,7 @@
                     <div class="row">
                         <div class="col-md-6 border-end">
                             <h6 class="text-primary fw-bold">JEŚLI (Wyzwalacz)</h6>
-                            
+
                             <div class="mb-3">
                                 <label class="form-label">Typ</label>
                                 <select class="form-select" id="edit-trigger-type" onchange="updateEditRuleUI()">
@@ -460,6 +466,7 @@
             </div>
         </div>
     </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js?v=test1"></script>
 </body>
