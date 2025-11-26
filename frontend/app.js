@@ -102,7 +102,7 @@ async function showDeviceDetails(deviceId, source = 'devices') {
 
         document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
         
-        await renderEmbeddedRules(deviceId, 'device-rules-list');
+        await renderEmbeddedRules(deviceId, 'device-rules-list', 'device_details');
 
         document.getElementById('view-devices').classList.add('d-none');
         document.getElementById('view-groups').classList.add('d-none');
@@ -471,7 +471,7 @@ async function showGroupDetails(groupId) {
             });
         }
         document.getElementById('btn-add-rule-group').onclick = () => openAddRuleModal(groupId);
-        await renderEmbeddedRules(groupId, 'group-rules-list');
+        await renderEmbeddedRules(groupId, 'group-rules-list', 'group_details');
         document.getElementById('view-device-details').classList.add('d-none');
         document.getElementById('view-groups').classList.add('d-none');
         document.getElementById('view-group-details').classList.remove('d-none');
@@ -822,10 +822,24 @@ async function deleteRule(ruleId) {
     }
 }
 
-async function showRuleDetails(ruleId) {
+async function showRuleDetails(ruleId, sourceView = 'rules', sourceId = null) {
     const rule = currentRules.find(r => r.id === ruleId);
-    if(!rule) return;
+    if (!rule) return;
     currentEditRuleId = ruleId;
+    const backBtn = document.getElementById('btn-rule-back');
+    const newBackBtn = backBtn.cloneNode(true);
+    if (sourceView === 'group_details' && sourceId) {
+        newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do grupy';
+        newBackBtn.onclick = () => showGroupDetails(sourceId);
+    } else if (sourceView === 'device_details' && sourceId) {
+        newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do urządzenia';
+        newBackBtn.onclick = () => showDeviceDetails(sourceId);
+    } else {
+        newBackBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Powrót do Automatyzacji';
+        newBackBtn.onclick = () => loadPage('rules');
+    }
+    backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+    
     try {
         const [resDev, resGrp] = await Promise.all([
             fetch(`${API_URL}/devices`),
@@ -845,7 +859,7 @@ async function showRuleDetails(ruleId) {
             const opt = document.createElement('option');
             opt.value = d.id;
             opt.innerText = `${d.name} (${d.type})`;
-            triggerSelect.appendChild(opt);
+            triggerSelect.appendChild(opt.cloneNode(true));
         });
         if(groups.length > 0) {
             const grpHeader = document.createElement('optgroup');
@@ -997,7 +1011,7 @@ async function deleteCurrentRule() {
     }
 }
 
-async function renderEmbeddedRules(targetId, listElementId) {
+async function renderEmbeddedRules(targetId, listElementId, sourceView) {
     const listEl = document.getElementById(listElementId);
     listEl.innerHTML = '<li class="list-group-item text-muted"><small>Ładowanie...</small></li>';
 
@@ -1011,7 +1025,7 @@ async function renderEmbeddedRules(targetId, listElementId) {
         );
 
         listEl.innerHTML = '';
-        if(relatedRules.length === 0) {
+        if (relatedRules.length === 0) {
             listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
             return;
         }
@@ -1019,13 +1033,11 @@ async function renderEmbeddedRules(targetId, listElementId) {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center list-group-item-action';
             li.style.cursor = 'pointer';
-            li.onclick = () => {
-                currentRules = rules;
-                showRuleDetails(r.id);
-            };
+            li.onclick = () => showRuleDetails(r.id, sourceView, targetId);
+
             let icon = 'fa-arrow-right';
-            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
-            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+            if (r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if (r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
 
             li.innerHTML = `
                 <span><i class="fa-solid ${icon} me-2"></i> ${r.name}</span>
