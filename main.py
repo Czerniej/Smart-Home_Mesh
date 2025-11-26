@@ -82,8 +82,11 @@ def on_message_callback(topic, payload):
 
 def run_api_server():
     logger.info(f"Uruchomienie serwera API na http://{config.API_HOST}:{config.API_PORT}")
-    uvicorn.run(app, host=config.API_HOST, port=config.API_PORT, log_level="info")
-    
+    try:
+        uvicorn.run(app, host=config.API_HOST, port=config.API_PORT, log_level="info")
+    except Exception as e:
+        logger.critical(f"KRYTYCZNY BŁĄD uruchomienia serwera Uvicorn/FastAPI: {e}")
+        shutdown()
 
 def shutdown(signal_received=None, frame=None):
     logger.critical("Otrzymano sygnał zakończenia (SIGINT/SIGTERM). Zatrzymywanie systemu...")
@@ -123,17 +126,16 @@ if(__name__ == "__main__"):
     rules_engine.start_time_loop()
     mqtt_client.connect(BROKER_ADDRESS=config.BROKER_ADDRESS, BROKER_PORT=config.BROKER_PORT)
     setup_api(device_manager, rules_engine, mqtt_client)
-    #api_thread = threading.Thread(target=run_api_server, daemon=True)
-    #api_thread.start()
+    api_thread = threading.Thread(target=run_api_server, daemon=True)
+    api_thread.start()
     
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    #logger.info("System działa. Oczekiwanie na wiadomości MQTT i połączenia API...")
+    logger.info("System działa. Oczekiwanie na wiadomości MQTT i połączenia API...")
     
-    #try:
-    #    while True:
-    #        time.sleep(1)
-    #except KeyboardInterrupt:
-    #    shutdown()
-    run_api_server()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        shutdown()
