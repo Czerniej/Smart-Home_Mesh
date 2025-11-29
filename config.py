@@ -14,7 +14,7 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 
 # --- Ustawienia API/Servera ---
-API_HOST = "localhost"
+API_HOST = "0.0.0.0"
 API_PORT = 8000
 ALLOWED_ORIGINS = ["*"]
 
