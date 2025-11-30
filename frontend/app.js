@@ -144,18 +144,14 @@ async function showDeviceDetails(deviceId, source = 'devices') {
     }
 }
 
-// --- ZMODYFIKOWANA FUNKCJA GENEROWANIA KAFELKÓW ---
 async function fetchAndDisplayDevices() {
     const listContainer = document.getElementById('devices-list');
-    
-    // Spinner podczas ładowania
     listContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
 
     try {
         const response = await fetch(`${API_URL}/devices`);
         const data = await response.json();
         currentDevices = data.devices;
-        
         listContainer.innerHTML = '';
 
         if(currentDevices.length === 0) {
@@ -176,9 +172,10 @@ async function fetchAndDisplayDevices() {
             else if(device.type === 'sensor') icon = 'fa-temperature-half';
 
             if(state === 'ON') colorClass = 'text-warning';
-            if(device.state) {
+            let techDataHtml = '<ul class="list-unstyled mb-0 small text-muted">';
+            if (device.state) {
                 for (const [key, value] of Object.entries(device.state)) {
-                    if(typeof value !== 'object') {
+                    if (typeof value !== 'object') {
                         techDataHtml += `<li><strong>${key}:</strong> ${value}</li>`;
                     }
                 }
@@ -189,7 +186,7 @@ async function fetchAndDisplayDevices() {
             col.innerHTML = `
                 <div class="card h-100 device-card shadow-sm">
                     <div class="card-body">
-                        <!-- GÓRNA CZĘŚĆ: IKONA, NAZWA, STAN, PRZYCISK ON/OFF -->
+                        <!-- GÓRNA CZĘŚĆ -->
                         <div class="d-flex align-items-center mb-2">
                             <div class="me-3 text-center" style="width: 50px;">
                                 <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
@@ -206,14 +203,14 @@ async function fetchAndDisplayDevices() {
                             </div>
                         </div>
 
-                        <!-- DOLNA CZĘŚĆ: PRZYCISK ROZWIJANIA DANYCH -->
+                        <!-- DOLNA CZĘŚĆ: Przycisk rozwijania -->
                         <div class="border-top pt-2">
                             <button class="btn btn-sm btn-link text-decoration-none p-0 w-100 text-start" 
                                     onclick="event.stopPropagation(); toggleCardDetails('${collapseId}')">
                                 <i class="fa-solid fa-chevron-down me-1"></i> Dane techniczne
                             </button>
                             
-                            <!-- UKRYTY KONTENER Z DANYMI -->
+                            <!-- Ukryta treść -->
                             <div id="${collapseId}" class="d-none mt-2 bg-light p-2 rounded">
                                 ${techDataHtml}
                             </div>
