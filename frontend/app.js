@@ -144,9 +144,13 @@ async function showDeviceDetails(deviceId, source = 'devices') {
     }
 }
 
+// --- ZMODYFIKOWANA FUNKCJA GENEROWANIA KAFELKÓW ---
 async function fetchAndDisplayDevices() {
     const listContainer = document.getElementById('devices-list');
+    
+    // Spinner podczas ładowania
     listContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
+
     try {
         const response = await fetch(`${API_URL}/devices`);
         const data = await response.json();
@@ -172,29 +176,64 @@ async function fetchAndDisplayDevices() {
             else if(device.type === 'sensor') icon = 'fa-temperature-half';
 
             if(state === 'ON') colorClass = 'text-warning';
+            if(device.state) {
+                for (const [key, value] of Object.entries(device.state)) {
+                    if(typeof value !== 'object') {
+                        techDataHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                }
+            }
+            techDataHtml += '</ul>';
+            const collapseId = `tech-data-${device.id}`;
 
             col.innerHTML = `
                 <div class="card h-100 device-card shadow-sm">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="me-3 text-center" style="width: 50px;">
-                            <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
+                    <div class="card-body">
+                        <!-- GÓRNA CZĘŚĆ: IKONA, NAZWA, STAN, PRZYCISK ON/OFF -->
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3 text-center" style="width: 50px;">
+                                <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
+                            </div>
+                            <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}')">
+                                <h5 class="card-title mb-0 text-truncate" title="${device.name}">${device.name}</h5>
+                                <small class="text-muted">${state}</small>
+                            </div>
+                            <div class="ms-2">
+                                ${device.type !== 'sensor' ? `
+                                <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); toggleDevice('${device.id}', '${state}', false)">
+                                    <i class="fa-solid fa-power-off"></i>
+                                </button>` : ''}
+                            </div>
                         </div>
-                        <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}')">
-                            <h5 class="card-title mb-0">${device.name}</h5>
-                            <small class="text-muted">${state}</small>
-                        </div>
-                        <div class="ms-2">
-                            ${device.type !== 'sensor' ? `
-                            <button class="btn btn-outline-primary btn-sm" onclick="toggleDevice('${device.id}', '${state}', false)">
-                                <i class="fa-solid fa-power-off"></i>
-                            </button>` : ''}
+
+                        <!-- DOLNA CZĘŚĆ: PRZYCISK ROZWIJANIA DANYCH -->
+                        <div class="border-top pt-2">
+                            <button class="btn btn-sm btn-link text-decoration-none p-0 w-100 text-start" 
+                                    onclick="event.stopPropagation(); toggleCardDetails('${collapseId}')">
+                                <i class="fa-solid fa-chevron-down me-1"></i> Dane techniczne
+                            </button>
+                            
+                            <!-- UKRYTY KONTENER Z DANYMI -->
+                            <div id="${collapseId}" class="d-none mt-2 bg-light p-2 rounded">
+                                ${techDataHtml}
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
             listContainer.appendChild(col);
         });
-    } catch (error) { console.error("Błąd:", error); listContainer.innerHTML = '<div class="alert alert-danger">Nie udało się załadować urządzeń.</div>';}
+    } catch (error) { 
+        console.error("Błąd:", error); 
+        listContainer.innerHTML = '<div class="alert alert-danger">Nie udało się załadować urządzeń.</div>';
+    }
+}
+
+function toggleCardDetails(elementId) {
+    const el = document.getElementById(elementId);
+    if(el) {
+        el.classList.toggle('d-none');
+    }
 }
 
 function createDeviceCard(device) {
@@ -658,16 +697,16 @@ async function fetchAndDisplayRules() {
         const allGroups = dataGrp.groups || [];
         const getName = (id) => {
             const dev = allDevices.find(d => d.id === id);
-            if (dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
+            if(dev) return `<span class="fw-bold text-primary">${dev.name}</span>`;
             
             const grp = allGroups.find(g => g.id === id);
-            if (grp) return `<span class="fw-bold text-success">[GRUPA] ${grp.name}</span>`;
+            if(grp) return `<span class="fw-bold text-success">[GRUPA] ${grp.name}</span>`;
             
             return `<span class="text-muted">${id}</span>`;
         };
         
         container.innerHTML = '';
-        if (currentRules.length === 0) {
+        if(currentRules.length === 0) {
             container.innerHTML = '<div class="col-12 text-center text-muted mt-5"><h5>Brak reguł.</h5><p>Kliknij "Nowa Reguła", aby zautomatyzować dom.</p></div>';
             return;
         }
@@ -677,7 +716,7 @@ async function fetchAndDisplayRules() {
             col.className = 'col-12';
             
             let triggerDesc = '';
-            if (rule.trigger.type === 'time') {
+            if(rule.trigger.type === 'time') {
                 triggerDesc = `🕒 Godzina <b>${rule.trigger.time}</b>`;
             } else {
                 triggerDesc = `⚡ Gdy ${getName(rule.trigger.device_id)} ma <b>${rule.trigger.key}</b> ${rule.trigger.operator} <b>${rule.trigger.value}</b>`;
@@ -1113,17 +1152,17 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
     listEl.innerHTML = '<li class="list-group-item text-muted"><small>Ładowanie...</small></li>';
 
     try {
-        if (currentRules.length === 0) {
+        if(currentRules.length === 0) {
             const res = await fetch(`${API_URL}/rules`);
             const data = await res.json();
             currentRules = data.rules || [];
         }
-        if (currentDevices.length === 0) {
+        if(currentDevices.length === 0) {
             const res = await fetch(`${API_URL}/devices`);
             const data = await res.json();
             currentDevices = data.devices || [];
         }
-        if (currentGroups.length === 0) {
+        if(currentGroups.length === 0) {
             const res = await fetch(`${API_URL}/groups`);
             const data = await res.json();
             currentGroups = data.groups || [];
@@ -1131,9 +1170,9 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
 
         const getName = (id) => {
             const dev = currentDevices.find(d => d.id === id);
-            if (dev) return `<span class="fw-bold">${dev.name}</span>`;
+            if(dev) return `<span class="fw-bold">${dev.name}</span>`;
             const grp = currentGroups.find(g => g.id === id);
-            if (grp) return `<span class="fw-bold">[GRUPA] ${g.name}</span>`;
+            if(grp) return `<span class="fw-bold">[GRUPA] ${g.name}</span>`;
             return `<span class="text-muted">${id}</span>`;
         };
 
@@ -1143,7 +1182,7 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
         );
 
         listEl.innerHTML = '';
-        if (relatedRules.length === 0) {
+        if(relatedRules.length === 0) {
             listEl.innerHTML = '<li class="list-group-item text-muted text-center"><small>Brak powiązanych reguł.</small></li>';
             return;
         }
@@ -1154,16 +1193,16 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
             li.onclick = () => showRuleDetails(r.id, sourceView, targetId);
             
             let icon = 'fa-arrow-right';
-            if (r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
-            if (r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
+            if(r.action && r.action.device_id === targetId) icon = 'fa-bolt text-warning';
+            if(r.trigger && r.trigger.device_id === targetId) icon = 'fa-eye text-primary';
 
             let ruleDesc = '';
-            if (r.trigger.device_id === targetId) {
+            if(r.trigger.device_id === targetId) {
                 ruleDesc = `Gdy stan się zmieni, wykonaj akcję na ${getName(r.action.device_id)}`;
             } else {
                 ruleDesc = `Wykonaj akcję po zdarzeniu z ${getName(r.trigger.device_id)}`;
             }
-            if (r.trigger.type === 'time') {
+            if(r.trigger.type === 'time') {
                  ruleDesc = `Wykonaj akcję o godzinie ${r.trigger.time}`;
             }
 
