@@ -5,7 +5,6 @@ let currentRules = [];
 let currentGroups = [];
 let currentEditRuleId = null;
 let currentDevices = [];
-let cachedDevicesForRules = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     loadPage('devices');
@@ -50,117 +49,6 @@ function loadPage(pageName) {
     else if(pageName === 'logs') {
         document.getElementById('view-logs').classList.remove('d-none');
         fetchLogs();
-    }
-}
-
-async function fetchAndDisplayDevices() {
-    const listContainer = document.getElementById('devices-list');
-    listContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
-
-    try {
-        const response = await fetch(`${API_URL}/devices`);
-        const data = await response.json();
-        currentDevices = data.devices;
-        listContainer.innerHTML = '';
-
-        if(currentDevices.length === 0) {
-            listContainer.innerHTML = '<div class="col-12 text-center text-muted">Brak urządzeń.</div>';
-            return;
-        }
-
-        currentDevices.forEach(device => {
-            const col = document.createElement('div');
-            col.className = 'col-md-4 col-sm-6';
-            
-            let icon = 'fa-question';
-            let colorClass = 'text-secondary';
-            const state = device.state?.state || 'UNKNOWN';
-
-            if(device.type === 'socket') icon = 'fa-plug';
-            else if(device.type === 'light') icon = 'fa-lightbulb';
-            else if(device.type === 'sensor') icon = 'fa-temperature-half';
-            else if(device.type === 'cover') icon = 'fa-blinds';
-            else if(device.type === 'lock') icon = 'fa-lock';
-            else if(device.type === 'thermostat') icon = 'fa-fire';
-            else if(device.type === 'controller') icon = 'fa-gamepad';
-
-            if(state === 'ON' || state === 'OPEN' || state === 'UNLOCK') colorClass = 'text-warning';
-            let techDataHtml = '<ul class="list-unstyled mb-0 small text-muted">';
-            if (device.state) {
-                for (const [key, value] of Object.entries(device.state)) {
-                    if (typeof value !== 'object') {
-                        techDataHtml += `<li><strong>${key}:</strong> ${value}</li>`;
-                    }
-                }
-            }
-            techDataHtml += '</ul>';
-            const collapseId = `tech-data-${device.id}`;
-            let actionButtons = '';
-            if (device.type === 'socket' || device.type === 'light') {
-                actionButtons = `
-                <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); toggleDevice('${device.id}', '${state}', false)">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>`;
-            } else if (device.type === 'lock') {
-                const isLocked = (state === 'LOCK');
-                actionButtons = `
-                <button class="btn btn-outline-${isLocked ? 'success' : 'danger'} btn-sm" 
-                        onclick="event.stopPropagation(); performCustomAction('${device.id}', '${isLocked ? 'unlock' : 'lock'}')">
-                    <i class="fa-solid ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
-                </button>`;
-            } else if (device.type === 'cover') {
-                actionButtons = `
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary" onclick="event.stopPropagation(); performCustomAction('${device.id}', 'open')"><i class="fa-solid fa-arrow-up"></i></button>
-                    <button class="btn btn-outline-secondary" onclick="event.stopPropagation(); performCustomAction('${device.id}', 'stop')"><i class="fa-solid fa-stop"></i></button>
-                    <button class="btn btn-outline-secondary" onclick="event.stopPropagation(); performCustomAction('${device.id}', 'close')"><i class="fa-solid fa-arrow-down"></i></button>
-                </div>`;
-            }
-
-            col.innerHTML = `
-                <div class="card h-100 device-card shadow-sm">
-                    <div class="card-body">
-                        <!-- GÓRNA CZĘŚĆ -->
-                        <div class="d-flex align-items-center mb-2">
-                            <div class="me-3 text-center" style="width: 50px;">
-                                <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
-                            </div>
-                            <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}')">
-                                <h5 class="card-title mb-0 text-truncate" title="${device.name}">${device.name}</h5>
-                                <small class="text-muted">${state}</small>
-                            </div>
-                            <div class="ms-2">
-                                ${actionButtons}
-                            </div>
-                        </div>
-
-                        <!-- DOLNA CZĘŚĆ: Przycisk rozwijania -->
-                        <div class="border-top pt-2">
-                            <button class="btn btn-sm btn-link text-decoration-none p-0 w-100 text-start" 
-                                    onclick="event.stopPropagation(); toggleCardDetails('${collapseId}')">
-                                <i class="fa-solid fa-chevron-down me-1"></i> Dane techniczne
-                            </button>
-                            
-                            <!-- Ukryta treść -->
-                            <div id="${collapseId}" class="d-none mt-2 bg-light p-2 rounded">
-                                ${techDataHtml}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            listContainer.appendChild(col);
-        });
-    } catch (error) { 
-        console.error("Błąd:", error); 
-        listContainer.innerHTML = '<div class="alert alert-danger">Nie udało się załadować urządzeń.</div>';
-    }
-}
-
-function toggleCardDetails(elementId) {
-    const el = document.getElementById(elementId);
-    if(el) {
-        el.classList.toggle('d-none');
     }
 }
 
@@ -220,9 +108,8 @@ async function showDeviceDetails(deviceId, source = 'devices') {
             btn.onclick = function() { toggleDevice(device.id, device.state?.state, true, source); };
             controls.appendChild(btn);
         } else {
-            controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących w tym widoku.</p>';
+            controls.innerHTML = '<p class="text-muted">Brak dostępnych akcji sterujących.</p>';
         }
-
         const groupsListEl = document.getElementById('device-groups-list');
         groupsListEl.innerHTML = '';
         const memberOfGroups = currentGroups.filter(g => g.members.includes(deviceId));
@@ -242,8 +129,11 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         } else {
             groupsListEl.innerHTML = '<li class="list-group-item text-muted"><small>Urządzenie nie należy do żadnej grupy.</small></li>';
         }
+
         document.getElementById('btn-add-rule-device').onclick = () => openAddRuleModal(deviceId);
+
         await renderEmbeddedRules(deviceId, 'device-rules-list', 'device_details');
+
         document.getElementById('view-devices').classList.add('d-none');
         document.getElementById('view-groups').classList.add('d-none');
         document.getElementById('view-group-details').classList.add('d-none');
@@ -252,6 +142,136 @@ async function showDeviceDetails(deviceId, source = 'devices') {
         console.error("Błąd w showDeviceDetails:", e);
         alert("Błąd ładowania szczegółów urządzenia.");
     }
+}
+
+async function fetchAndDisplayDevices() {
+    const listContainer = document.getElementById('devices-list');
+    listContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
+
+    try {
+        const response = await fetch(`${API_URL}/devices`);
+        const data = await response.json();
+        currentDevices = data.devices;
+        listContainer.innerHTML = '';
+
+        if(currentDevices.length === 0) {
+            listContainer.innerHTML = '<div class="col-12 text-center text-muted">Brak urządzeń.</div>';
+            return;
+        }
+
+        currentDevices.forEach(device => {
+            const col = document.createElement('div');
+            col.className = 'col-md-4 col-sm-6';
+            
+            let icon = 'fa-question';
+            let colorClass = 'text-secondary';
+            const state = device.state?.state || 'UNKNOWN';
+
+            if(device.type === 'socket') icon = 'fa-plug';
+            else if(device.type === 'light') icon = 'fa-lightbulb';
+            else if(device.type === 'sensor') icon = 'fa-temperature-half';
+
+            if(state === 'ON') colorClass = 'text-warning';
+            let techDataHtml = '<ul class="list-unstyled mb-0 small text-muted">';
+            if (device.state) {
+                for (const [key, value] of Object.entries(device.state)) {
+                    if (typeof value !== 'object') {
+                        techDataHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                }
+            }
+            techDataHtml += '</ul>';
+            const collapseId = `tech-data-${device.id}`;
+
+            col.innerHTML = `
+                <div class="card h-100 device-card shadow-sm">
+                    <div class="card-body">
+                        <!-- GÓRNA CZĘŚĆ -->
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3 text-center" style="width: 50px;">
+                                <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
+                            </div>
+                            <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}')">
+                                <h5 class="card-title mb-0 text-truncate" title="${device.name}">${device.name}</h5>
+                                <small class="text-muted">${state}</small>
+                            </div>
+                            <div class="ms-2">
+                                ${device.type !== 'sensor' ? `
+                                <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); toggleDevice('${device.id}', '${state}', false)">
+                                    <i class="fa-solid fa-power-off"></i>
+                                </button>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- DOLNA CZĘŚĆ: Przycisk rozwijania -->
+                        <div class="border-top pt-2">
+                            <button class="btn btn-sm btn-link text-decoration-none p-0 w-100 text-start" 
+                                    onclick="event.stopPropagation(); toggleCardDetails('${collapseId}')">
+                                <i class="fa-solid fa-chevron-down me-1"></i> Dane techniczne
+                            </button>
+                            
+                            <!-- Ukryta treść -->
+                            <div id="${collapseId}" class="d-none mt-2 bg-light p-2 rounded">
+                                ${techDataHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(col);
+        });
+    } catch (error) { 
+        console.error("Błąd:", error); 
+        listContainer.innerHTML = '<div class="alert alert-danger">Nie udało się załadować urządzeń.</div>';
+    }
+}
+
+function toggleCardDetails(elementId) {
+    const el = document.getElementById(elementId);
+    if(el) {
+        el.classList.toggle('d-none');
+    }
+}
+
+function createDeviceCard(device) {
+    const col = document.createElement('div');
+    col.className = 'col-md-4 col-sm-6';
+    
+    let icon = 'fa-question';
+    let colorClass = 'text-secondary';
+    const state = device.state?.state || 'UNKNOWN';
+
+    if(device.type === 'socket') icon = 'fa-plug';
+    else if(device.type === 'light') icon = 'fa-lightbulb';
+    else if(device.type === 'sensor') icon = 'fa-temperature-half';
+
+    if(state === 'ON') colorClass = 'text-warning';
+
+    col.innerHTML = `
+        <div class="card h-100 device-card shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <!-- Ikona -->
+                <div class="me-3 text-center" style="width: 50px;">
+                    <i class="fa-solid ${icon} fa-2x ${colorClass}"></i>
+                </div>
+                
+                <!-- Tekst (Klikalny -> Szczegóły) -->
+                <div class="flex-grow-1" style="cursor: pointer;" onclick="showDeviceDetails('${device.id}', 'devices')">
+                    <h5 class="card-title mb-0">${device.name}</h5>
+                    <small class="text-muted">${state}</small>
+                </div>
+                
+                <!-- Szybki przycisk (tylko dla sterowalnych) -->
+                <div class="ms-2">
+                    ${device.type !== 'sensor' ? `
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleDevice('${device.id}', '${state}', false)">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    return col;
 }
 
 async function toggleDevice(deviceId, currentState, refreshDetails = false, sourceView = 'devices') {
@@ -272,17 +292,6 @@ async function toggleDevice(deviceId, currentState, refreshDetails = false, sour
             }
         }, 500);
     } catch (e) { alert("Błąd: " + e); }
-}
-
-async function performCustomAction(deviceId, action, value=null) {
-    try {
-        await fetch(`${API_URL}/devices/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_id: deviceId, action: action, value: value })
-        });
-        setTimeout(fetchAndDisplayDevices, 500); 
-    } catch (e) { alert("Błąd akcji: " + e); }
 }
 
 async function renameCurrentDevice() {
@@ -314,6 +323,16 @@ async function deleteCurrentDevice() {
             loadPage('devices');
         } catch(e) { console.error(e); }
     }
+}
+
+async function fetchLogs() {
+    const container = document.getElementById('logs-container');
+    container.innerText = "Pobieranie...";
+    try {
+        const res = await fetch(`${API_URL}/logs?lines=100`);
+        const data = await res.json();
+        container.innerText = data.logs.reverse().join("");
+    } catch(e) { container.innerText = "Błąd pobierania logów."; }
 }
 
 async function startPairing() {
@@ -466,49 +485,6 @@ async function createGroup() {
     } catch(e) { alert("Błąd: " + e); }
 }
 
-async function renameCurrentGroup() {
-    if(!currentGroupDetails || !currentGroupDetails.id) return;
-    const groupId = currentGroupDetails.id;
-    
-    const newName = document.getElementById('g-detail-new-name-input').value.trim();
-    if(!newName) return alert("Podaj nową nazwę dla grupy!");
-
-    if(currentGroups.some(g => g.name === newName && g.id !== groupId)) {
-        return alert("Błąd: Grupa o takiej nazwie już istnieje!");
-    }
-
-    if(confirm(`Czy na pewno zmienić nazwę grupy na "${newName}"?`)) {
-        try {
-            const res = await fetch(`${API_URL}/groups/${groupId}/rename`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ new_name: newName })
-            });
-
-            if(res.ok) {
-                alert("Nazwa grupy została zmieniona.");
-                const groupInCache = currentGroups.find(g => g.id === groupId);
-                if(groupInCache) {
-                    groupInCache.name = newName;
-                }
-                loadPage('groups');
-            } else {
-                let errorMsg = "Wystąpił błąd podczas zmiany nazwy.";
-                try {
-                    const errData = await res.json();
-                    if(errData.detail) errorMsg += `\n\nSzczegóły: ${errData.detail}`;
-                } catch (e) {
-                    errorMsg += `\n\nStatus: ${res.status}`;
-                }
-                alert(errorMsg);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Błąd sieci: " + e);
-        }
-    }
-}
-
 async function deleteGroup(groupId) {
     if(confirm("Usunąć tę grupę?")) {
         try {
@@ -560,7 +536,6 @@ async function showGroupDetails(groupId, sourceView = 'groups', sourceId = null)
 
         document.getElementById('g-detail-name').innerText = group.name;
         document.getElementById('g-detail-id').innerText = group.id;
-        document.getElementById('g-detail-new-name-input').value = group.name;
 
         document.getElementById('g-btn-on').onclick = () => toggleGroup(group.id, 'turn_on');
         document.getElementById('g-btn-off').onclick = () => toggleGroup(group.id, 'turn_off');
@@ -615,6 +590,8 @@ function createGroupMemberCard(device, groupId) {
                     <small class="text-muted" style="font-size: 0.8rem">${state}</small>
                 </div>
                 
+                <!-- Przycisk usuwania z grupy -->
+                <!-- event.stopPropagation() jest kluczowe, żeby nie uruchamiać onclick rodzica -->
                 <button class="btn btn-outline-danger btn-sm" 
                         onclick="event.stopPropagation(); removeMemberFromGroup('${groupId}', '${device.id}')" 
                         title="Usuń z grupy">
@@ -759,6 +736,8 @@ async function fetchAndDisplayRules() {
 
     } catch(e) { container.innerHTML = `<div class="alert alert-danger">Błąd: ${e}</div>`; }
 }
+
+let cachedDevicesForRules = [];
 
 async function openAddRuleModal(preFillTargetId = null) {
     document.getElementById('rule-name').value = '';
@@ -1238,14 +1217,4 @@ async function renderEmbeddedRules(targetId, listElementId, sourceView) {
         console.error(e); 
         listEl.innerHTML = '<li class="list-group-item text-danger">Błąd ładowania reguł.</li>'; 
     }
-}
-
-async function fetchLogs() {
-    const container = document.getElementById('logs-container');
-    container.innerText = "Pobieranie...";
-    try {
-        const res = await fetch(`${API_URL}/logs?lines=100`);
-        const data = await res.json();
-        container.innerText = data.logs.reverse().join("");
-    } catch(e) { container.innerText = "Błąd pobierania logów."; }
 }

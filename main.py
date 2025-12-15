@@ -11,7 +11,7 @@ from core.mqtt_client import MQTT_Client
 from core.device_manager import DeviceManager
 from core.rule_engine import RulesEngine
 from core.database import DatabaseManager
-from core.devices_types import SocketDevice, SensorDevice, LightDevice, CoverDevice, LockDevice, ThermostatDevice, ControllerDevice
+from core.devices_types import SocketDevice, SensorDevice, LightDevice 
 from logging_config import setup_logging
 import config
 from api import app, setup_api 
@@ -25,34 +25,26 @@ mqtt_client: MQTT_Client = None
 
 def determine_device_type(definition: dict) -> type:
     """
-    Analizuje definicję urządzenia z Zigbee2MQTT i zwraca odpowiednią klasę.
+    Analizuje definicję urządzenia z Zigbee2MQTT i zwraca odpowiednią klasę Pythona.
     """
     if(not definition or "exposes" not in definition):
-        return SensorDevice
+        return SocketDevice
 
     exposes = definition.get("exposes", [])
     features = []
-
+    
     for item in exposes:
-        features.append(item.get("name", ""))
-        features.append(item.get("type", ""))
-        if item.get("features"):
+        if(item.get("type") == "light"):
+            features.append("light")
+        if(item.get("name") in ["state", "switch"]):
+            features.append("switch")
+        if(item.get("features")):
             for sub in item.get("features"):
-                features.append(sub.get("name", ""))
-
-    features_set = set(features)
-
-    if("cover" in features_set or "position" in features_set):
-        return CoverDevice
-    if("lock" in features_set and "lock_state" in features_set):
-        return LockDevice
-    if("climate" in features_set or "current_heating_setpoint" in features_set):
-        return ThermostatDevice
-    if("light" in features_set or "brightness" in features_set or "color_xy" in features_set):
+                if(sub.get("name") == "state"): features.append("switch")
+                if(sub.get("name") in ["brightness", "color_xy", "color_temp"]): features.append("light")
+    if("light" in features):
         return LightDevice
-    if("action" in features_set and "switch" not in features_set):
-        return ControllerDevice
-    if("switch" in features_set or "state" in features_set):
+    if("switch" in features):
         return SocketDevice
     return SensorDevice
 

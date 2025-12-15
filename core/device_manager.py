@@ -3,7 +3,7 @@ import os
 import json
 import threading
 
-from .devices_types import LightDevice, SocketDevice, SensorDevice, BaseDevice, CoverDevice, LockDevice, ThermostatDevice, ControllerDevice
+from .devices_types import LightDevice, SocketDevice, SensorDevice, BaseDevice 
 from .database import DatabaseManager
 import config 
 
@@ -12,11 +12,7 @@ logger = logging.getLogger(__name__)
 DEVICE_TYPE_MAPPING = {
     "light": LightDevice,
     "socket": SocketDevice,
-    "sensor": SensorDevice,
-    "cover": CoverDevice,
-    "lock": LockDevice,
-    "thermostat": ThermostatDevice,
-    "controller": ControllerDevice
+    "sensor": SensorDevice
 }
 
 class DeviceManager:
