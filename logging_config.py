@@ -39,13 +39,11 @@ def setup_logging():
             },
         },
         'loggers': {
-            # Logger główny
             '': { 
                 'handlers': ['console', 'file'],
                 'level': logging.INFO,
                 'propagate': True
             },
-            # Logger Paho-MQTT
             'paho-mqtt': {
                 'handlers': ['console', 'file'],
                 'level': logging.WARNING,

@@ -3,7 +3,6 @@ from core.rule_engine import RulesEngine
 from core.devices_types import SensorDevice
 from core.database import DatabaseManager
 
-# --- Fakes ---
 class FakeDeviceManager:
     def __init__(self):
         self.devices = {}
@@ -15,22 +14,22 @@ class FakeDeviceManager:
 class FakeMqttClient:
     pass
 
-# --- Fixture ---
 @pytest.fixture
 def clean_engine():
-    """Zapewnia w pełni wyizolowaną instancję RulesEngine z bazą w pamięci."""
+    """
+    Zapewnia w pełni wyizolowaną instancję RulesEngine z bazą w pamięci.
+    """
     mem_db = DatabaseManager(db_path=":memory:")
     engine = RulesEngine(db_manager=mem_db)
     engine.setup(FakeDeviceManager(), FakeMqttClient())
     yield engine
-
-# --- Testy ---
 
 @pytest.mark.parametrize("operator,current_value,rule_value,expected_trigger", [
     ("eq", "ON", "ON", True), ("eq", "ON", "OFF", False), ("neq", "ON", "OFF", True),
     ("gt", 25, 20, True), ("gt", 20, 20, False), ("lt", 15, 20, True),
     ("gte", 20, 20, True), ("lte", 19, 20, True),
 ])
+
 def test_rule_operators(clean_engine, operator, current_value, rule_value, expected_trigger):
     engine = clean_engine
     sensor = SensorDevice(device_id="d1", name="N", topic="T")
@@ -44,9 +43,7 @@ def test_rule_operators(clean_engine, operator, current_value, rule_value, expec
     }
     
     assert engine.add_rule(rule) is True
-    
     engine.evaluate_state_change_rules(device_id="d1")
-    
     action_triggered = (engine.device_manager.action_performed is not None)
     assert action_triggered == expected_trigger
 
